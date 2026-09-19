@@ -39,7 +39,14 @@ export const TaskSuggestionCard = ({
   };
 
   const getConfidenceBadge = (lvl) => {
-    switch ((lvl || '').toLowerCase()) {
+    let normalized = lvl;
+    if (typeof lvl === 'number') {
+      if (lvl >= 0.8) normalized = 'high';
+      else if (lvl >= 0.6) normalized = 'medium';
+      else normalized = 'low';
+    }
+    const val = String(normalized || '').toLowerCase();
+    switch (val) {
       case 'high':
         return (
           <Badge variant="success" size="sm">
@@ -59,7 +66,11 @@ export const TaskSuggestionCard = ({
           </Badge>
         );
       default:
-        return null;
+        return (
+          <Badge variant="info" size="sm">
+            AI Suggestion
+          </Badge>
+        );
     }
   };
 

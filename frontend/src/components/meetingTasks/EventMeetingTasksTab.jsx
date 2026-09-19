@@ -43,7 +43,7 @@ export const EventMeetingTasksTab = ({
         meetingNotes: notes.trim()
       });
 
-      const extractedSuggestions = res.data?.data?.suggestions || [];
+      const extractedSuggestions = res.data?.suggestions || res.data?.data?.suggestions || res.suggestions || [];
       setSuggestions(extractedSuggestions);
 
       // Default select all extracted suggestions
@@ -110,7 +110,7 @@ export const EventMeetingTasksTab = ({
         tasks: payloadTasks
       });
 
-      const newTasks = res.data?.data?.tasks || [];
+      const newTasks = res.data?.tasks || res.data?.data?.tasks || res.tasks || [];
       setCreatedTasks(newTasks);
       setSuggestions(null);
       setSelectedIndices(new Set());
