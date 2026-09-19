@@ -236,7 +236,7 @@ export const EventKnowledgeTab = ({ eventId, canManage, onNavigateToDocuments })
 
       {/* Grounded Answer Panel */}
       {!isSearching && activeResult && (
-        <div className="space-y-4 animate-fadeIn">
+        <div className="space-y-4 transition-all duration-200">
           <Card className="p-5 sm:p-6 bg-surface border border-border shadow-subtle space-y-4">
             {/* Question Bar */}
             <div className="pb-3 border-b border-border flex items-start justify-between gap-3">

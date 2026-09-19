@@ -57,3 +57,13 @@ img, svg, video, canvas, audio, iframe, embed, object {
 ::-webkit-scrollbar-thumb:hover {
   background: #9CA3AF;
 }
+
+/* Hide scrollbars for clean tab navigation while maintaining scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
