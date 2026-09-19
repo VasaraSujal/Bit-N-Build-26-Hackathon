@@ -1,0 +1,2759 @@
+{
+  "info": {
+    "_postman_id": "9bcbe728-9c41-4ce8-9019-2f1f84e8a6b3",
+    "name": "ClubOps AI — Complete API",
+    "description": "Complete API documentation and testing collection for ClubOps AI.\n\nThis collection covers authentication, super-admin operations, club management, event management, volunteers, tasks, AI meeting-task extraction, risk detection and management, event documents, knowledge/RAG queries, AI-assisted announcements, and Discord announcement actions.\n\nGenerated from the currently implemented backend routes.\n\nRecommended testing flow:\n1. Health Check\n2. Authentication\n3. Club Management\n4. Event Management\n5. Volunteers\n6. Tasks\n7. AI Meeting Tasks\n8. Risk Management\n9. Documents\n10. Knowledge/RAG\n11. Announcements\n12. Discord Send",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "superAdminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clubAdminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "volunteerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clubId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clubId2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "eventId2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clubAdminUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "volunteerUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId2",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "volunteerAssignmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "riskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "documentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "announcementId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 — Health",
+      "item": [
+        {
+          "name": "Root API Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [],
+              "query": []
+            },
+            "description": "### Root API Check\n\n**Purpose:**\nVerifies that the Express application is running and accessible.\n\n**Authentication:**\nNot required (Public endpoint).\n\n**Allowed Roles:**\nPublic / All.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"ClubOps AI API is running\"\n}\n```\n\n**Common Errors:**\n- 500: Internal Server Error\n\n**Testing Notes:**\nRun this as the first check to ensure the server process is alive."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"API is running\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.message).to.eql(\"ClubOps AI API is running\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Database Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ],
+              "query": []
+            },
+            "description": "### Database Health Check\n\n**Purpose:**\nChecks the active PostgreSQL database connection pool health by executing a `SELECT 1` query.\n\n**Authentication:**\nNot required (Public endpoint).\n\n**Allowed Roles:**\nPublic / All.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"ClubOps AI API is healthy\",\n  \"database\": \"connected\"\n}\n```\n\n**Common Errors:**\n- 503 Service Unavailable: Database disconnected or credentials misconfigured.\n\n**Testing Notes:**\nVerifies PostgreSQL connectivity before executing database-dependent API operations."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Database is connected\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.database).to.eql(\"connected\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 — Authentication",
+      "item": [
+        {
+          "name": "Register User (Volunteer / Member)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ],
+              "query": []
+            },
+            "description": "### Register User\n\n**Purpose:**\nRegisters a new user account. Public registration strictly creates unassigned VOLUNTEER accounts (`role: 'VOLUNTEER'`, `club_id: null`). Super Admins and Club Admins must be provisioned or assigned through administrative workflows.\n\n**Authentication:**\nNot required (Public endpoint).\n\n**Allowed Roles:**\nPublic / All.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `name` (string, required): Full name of the user.\n- `email` (string, required): Unique email address.\n- `password` (string, required): Minimum 6 characters.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"User registered successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Riya Sharma\",\n      \"email\": \"riya.sharma@example.com\",\n      \"role\": \"VOLUNTEER\",\n      \"club_id\": null,\n      \"created_at\": \"timestamp\"\n    },\n    \"token\": \"jwt_token\"\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing required fields or password under 6 characters.\n- 409 Conflict: An account with this email already exists.\n\n**Testing Notes:**\nAutomatically captures the returned user ID into `{{userId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Riya Sharma\",\n  \"email\": \"riya.sharma@example.com\",\n  \"password\": \"Test@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.user && json.data.user.id) {",
+                  "    pm.collectionVariables.set(\"userId\", json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — Super Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "### Login — Super Admin\n\n**Purpose:**\nAuthenticates the Super Admin user and obtains a signed JWT token.\n\n**Authentication:**\nNot required.\n\n**Allowed Roles:**\nPublic / Super Admin credentials.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `email` (string, required): Seeded Super Admin email (`admin@clubops.ai`).\n- `password` (string, required): Super Admin password (`Test@12345`).\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Super Administrator\",\n      \"email\": \"admin@clubops.ai\",\n      \"role\": \"SUPER_ADMIN\",\n      \"club_id\": null\n    },\n    \"token\": \"jwt_token\"\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Email or password missing.\n- 401 Unauthorized: Invalid credentials or deactivated account.\n\n**Testing Notes:**\nAutomatically saves JWT into `{{superAdminToken}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@clubops.ai\",\n  \"password\": \"Test@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set(\"superAdminToken\", json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — Club Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "### Login — Club Admin\n\n**Purpose:**\nAuthenticates a Club Administrator and obtains a signed JWT token scoped to their club.\n\n**Authentication:**\nNot required.\n\n**Allowed Roles:**\nPublic / Club Admin credentials.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `email` (string, required): Seeded Club Admin email (`clubadmin@clubops.ai`).\n- `password` (string, required): Club Admin password (`Test@12345`).\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Club Lead\",\n      \"email\": \"clubadmin@clubops.ai\",\n      \"role\": \"CLUB_ADMIN\",\n      \"club_id\": \"uuid\"\n    },\n    \"token\": \"jwt_token\"\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Email or password missing.\n- 401 Unauthorized: Invalid credentials or deactivated account.\n\n**Testing Notes:**\nAutomatically saves JWT into `{{clubAdminToken}}` and user ID into `{{clubAdminUserId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"clubadmin@clubops.ai\",\n  \"password\": \"Test@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set(\"clubAdminToken\", json.data.token);",
+                  "}",
+                  "if (json.data && json.data.user && json.data.user.id) {",
+                  "    pm.collectionVariables.set(\"clubAdminUserId\", json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login — Volunteer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "### Login — Volunteer\n\n**Purpose:**\nAuthenticates a student Volunteer and obtains a signed JWT token.\n\n**Authentication:**\nNot required.\n\n**Allowed Roles:**\nPublic / Volunteer credentials.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `email` (string, required): Seeded Volunteer email (`volunteer@clubops.ai`).\n- `password` (string, required): Volunteer password (`Test@12345`).\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Login successful\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Demo Volunteer\",\n      \"email\": \"volunteer@clubops.ai\",\n      \"role\": \"VOLUNTEER\",\n      \"club_id\": \"uuid\"\n    },\n    \"token\": \"jwt_token\"\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Email or password missing.\n- 401 Unauthorized: Invalid credentials.\n\n**Testing Notes:**\nAutomatically saves JWT into `{{volunteerToken}}` and user ID into `{{volunteerUserId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"volunteer@clubops.ai\",\n  \"password\": \"Test@12345\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) {",
+                  "    pm.collectionVariables.set(\"volunteerToken\", json.data.token);",
+                  "}",
+                  "if (json.data && json.data.user && json.data.user.id) {",
+                  "    pm.collectionVariables.set(\"volunteerUserId\", json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User Profile (/me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "### Get Current User Profile\n\n**Purpose:**\nFetches the profile and authorization metadata of the authenticated user.\n\n**Authentication:**\nRequired (`Bearer <token>`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Super Administrator\",\n      \"email\": \"admin@clubops.ai\",\n      \"role\": \"SUPER_ADMIN\",\n      \"club_id\": null,\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid JWT.\n- 404 Not Found: User account no longer exists."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"User data returned\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.user).to.have.property(\"email\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 — Clubs",
+      "item": [
+        {
+          "name": "Create Club",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs"
+              ],
+              "query": []
+            },
+            "description": "### Create Club\n\n**Purpose:**\nCreates a new student club in the platform.\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `name` (string, required): Unique name of the club.\n- `description` (string, optional): Detailed club description.\n- `logoUrl` (string, optional): Public URL to club logo.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Club created successfully\",\n  \"data\": {\n    \"club\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Innovation Club\",\n      \"description\": \"...\",\n      \"logo_url\": \"...\",\n      \"is_active\": true,\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing club name.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not a SUPER_ADMIN.\n- 409 Conflict: A club with this name already exists.\n\n**Testing Notes:**\nAutomatically saves the created club ID into `{{clubId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Innovation Club\",\n  \"description\": \"Premier student organization dedicated to software engineering, AI innovation, and hackathons.\",\n  \"logoUrl\": \"https://example.com/logos/tech-innovation.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.club && json.data.club.id) {",
+                  "    pm.collectionVariables.set(\"clubId\", json.data.club.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List All Clubs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs"
+              ],
+              "query": []
+            },
+            "description": "### List All Clubs\n\n**Purpose:**\nRetrieves all registered clubs with member count and event statistics.\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"clubs\": [\n      {\n        \"id\": \"uuid\",\n        \"name\": \"Tech Innovation Club\",\n        \"description\": \"...\",\n        \"logo_url\": \"...\",\n        \"is_active\": true,\n        \"created_at\": \"timestamp\",\n        \"updated_at\": \"timestamp\",\n        \"member_count\": \"5\",\n        \"event_count\": \"2\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not SUPER_ADMIN."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.clubs && json.data.clubs.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"clubId\")) {",
+                  "        pm.collectionVariables.set(\"clubId\", json.data.clubs[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Club by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}"
+              ],
+              "query": []
+            },
+            "description": "### Get Club by ID\n\n**Purpose:**\nRetrieves detailed metadata for a specific club.\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}` or `Bearer {{clubAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN (all clubs) or CLUB_ADMIN (their own assigned club).\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"club\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Innovation Club\",\n      \"description\": \"...\",\n      \"logo_url\": \"...\",\n      \"is_active\": true,\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not have access to this club.\n- 404 Not Found: Club does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Club Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}"
+              ],
+              "query": []
+            },
+            "description": "### Update Club Details\n\n**Purpose:**\nUpdates club name, description, or logo.\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `name` (string, optional): Updated club name.\n- `description` (string, optional): Updated description.\n- `logoUrl` (string, optional): Updated logo URL.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Club updated successfully\",\n  \"data\": {\n    \"club\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Innovation & AI Club\",\n      \"description\": \"...\",\n      \"logo_url\": \"...\",\n      \"is_active\": true,\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not SUPER_ADMIN.\n- 404 Not Found: Club does not exist.\n- 409 Conflict: Name is already used by another club.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tech Innovation & AI Club\",\n  \"description\": \"Updated mission: software engineering, generative AI, and hackathons.\",\n  \"logoUrl\": \"https://example.com/logos/tech-innovation-v2.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Club",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/deactivate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "deactivate"
+              ],
+              "query": []
+            },
+            "description": "### Deactivate Club\n\n**Purpose:**\nMarks a club as inactive (`is_active: false`).\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Club deactivated successfully\",\n  \"data\": {\n    \"club\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Innovation Club\",\n      \"is_active\": false,\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-super-admin caller.\n- 404 Not Found: Club does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activate Club",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "activate"
+              ],
+              "query": []
+            },
+            "description": "### Activate Club\n\n**Purpose:**\nRe-activates a deactivated club (`is_active: true`).\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Club activated successfully\",\n  \"data\": {\n    \"club\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Innovation Club\",\n      \"is_active\": true,\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-super-admin caller.\n- 404 Not Found: Club does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign / Replace Club Admin",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "admin"
+              ],
+              "query": []
+            },
+            "description": "### Assign / Replace Club Admin\n\n**Purpose:**\nAssigns a user as the administrator of the specified club. If another administrator previously managed the club, their role is demoted to VOLUNTEER to ensure a clean 1-to-1 administrative boundary.\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `userId` (UUID, required): User ID to become CLUB_ADMIN (`{{clubAdminUserId}}` or `{{userId}}`).\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Club admin assigned successfully\",\n  \"data\": {\n    \"clubId\": \"uuid\",\n    \"admin\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Club Lead\",\n      \"email\": \"clubadmin@clubops.ai\",\n      \"role\": \"CLUB_ADMIN\",\n      \"club_id\": \"uuid\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing userId.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not SUPER_ADMIN.\n- 404 Not Found: Club or User does not exist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{clubAdminUserId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Volunteer to Club",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/volunteers/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "volunteers",
+                "{{userId}}"
+              ],
+              "query": []
+            },
+            "description": "### Assign Volunteer to Club\n\n**Purpose:**\nAssigns a student volunteer to a club membership roster (`role: 'VOLUNTEER'`, `club_id: clubId`).\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n- `userId` (UUID, required): Target user ID (`{{volunteerUserId}}` or `{{userId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Volunteer assigned to club successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Riya Sharma\",\n      \"email\": \"riya.sharma@example.com\",\n      \"role\": \"VOLUNTEER\",\n      \"club_id\": \"uuid\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-super-admin caller.\n- 404 Not Found: Club or User not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Volunteer from Club",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/volunteers/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "volunteers",
+                "{{userId}}"
+              ],
+              "query": []
+            },
+            "description": "### Remove Volunteer from Club\n\n**Purpose:**\nRemoves a volunteer from a club, unsetting their `club_id` back to `null`.\n\n**Authentication:**\nRequired (`Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN only.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n- `userId` (UUID, required): Target user ID (`{{volunteerUserId}}` or `{{userId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Volunteer removed from club successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"uuid\",\n      \"name\": \"Riya Sharma\",\n      \"role\": \"VOLUNTEER\",\n      \"club_id\": null\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Cannot remove a user who is not a VOLUNTEER of this club.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-super-admin caller.\n- 404 Not Found: Club or User not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Club Members",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/members",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "members"
+              ],
+              "query": []
+            },
+            "description": "### Get Club Members\n\n**Purpose:**\nLists all members (Admins and Volunteers) registered to the club.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"members\": [\n      {\n        \"id\": \"uuid\",\n        \"name\": \"Tech Club Lead\",\n        \"email\": \"clubadmin@clubops.ai\",\n        \"role\": \"CLUB_ADMIN\",\n        \"is_active\": true,\n        \"created_at\": \"timestamp\"\n      },\n      {\n        \"id\": \"uuid\",\n        \"name\": \"Demo Volunteer\",\n        \"email\": \"volunteer@clubops.ai\",\n        \"role\": \"VOLUNTEER\",\n        \"is_active\": true,\n        \"created_at\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not belong to this club.\n- 404 Not Found: Club does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Club Summary / Analytics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "summary"
+              ],
+              "query": []
+            },
+            "description": "### Get Club Summary / Analytics\n\n**Purpose:**\nReturns aggregated operational counts including total members, active events, and recent activity.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"club\": {\n      \"id\": \"uuid\",\n      \"name\": \"Tech Innovation Club\",\n      \"description\": \"...\",\n      \"is_active\": true\n    },\n    \"counts\": {\n      \"totalMembers\": 5,\n      \"totalEvents\": 2,\n      \"upcomingEvents\": 1\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not belong to this club.\n- 404 Not Found: Club does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Club Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/clubs/{{clubId}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "clubs",
+                "{{clubId}}",
+                "events"
+              ],
+              "query": []
+            },
+            "description": "### Get Club Events\n\n**Purpose:**\nLists all events organized by the specified club.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER (must be member of this club).\n\n**Path Parameters:**\n- `clubId` (UUID, required): Target club ID (`{{clubId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"events\": [\n      {\n        \"id\": \"uuid\",\n        \"club_id\": \"uuid\",\n        \"name\": \"AI Innovation Summit 2026\",\n        \"description\": \"...\",\n        \"event_date\": \"2026-10-15T10:00:00.000Z\",\n        \"status\": \"published\",\n        \"created_at\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not belong to this club.\n- 404 Not Found: Club does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Events",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": []
+            },
+            "description": "### Create Event\n\n**Purpose:**\nCreates a new event under the specified club.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or CLUB_ADMIN (for their assigned club).\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `clubId` (UUID, required): ID of the hosting club (`{{clubId}}`).\n- `name` (string, required): Event title.\n- `description` (string, optional): Detailed event overview.\n- `eventDate` (ISO Timestamp, required): Scheduled date and time of the event.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Event created successfully\",\n  \"data\": {\n    \"event\": {\n      \"id\": \"uuid\",\n      \"club_id\": \"uuid\",\n      \"name\": \"AI Innovation Summit 2026\",\n      \"description\": \"...\",\n      \"event_date\": \"2026-10-15T10:00:00.000Z\",\n      \"status\": \"draft\",\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing clubId, name, or invalid eventDate.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Club admin attempting to create event for another club.\n- 404 Not Found: Club does not exist or is inactive.\n\n**Testing Notes:**\nAutomatically captures the created event ID into `{{eventId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clubId\": \"{{clubId}}\",\n  \"name\": \"AI Innovation Summit 2026\",\n  \"description\": \"Annual university tech conference featuring generative AI workshops, student demos, and hackathon project showcases.\",\n  \"eventDate\": \"2026-10-15T10:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.event && json.data.event.id) {",
+                  "    pm.collectionVariables.set(\"eventId\", json.data.event.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events?clubId={{clubId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "clubId",
+                  "value": "{{clubId}}",
+                  "description": "Optional filter by club UUID"
+                }
+              ]
+            },
+            "description": "### List Events\n\n**Purpose:**\nLists events visible to the authenticated user. Super admins see all events; club admins and volunteers see events within their club boundary.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\nNone.\n\n**Query Parameters:**\n- `clubId` (UUID, optional): Filter events by specific club ID.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"events\": [\n      {\n        \"id\": \"uuid\",\n        \"club_id\": \"uuid\",\n        \"name\": \"AI Innovation Summit 2026\",\n        \"description\": \"...\",\n        \"event_date\": \"2026-10-15T10:00:00.000Z\",\n        \"status\": \"draft\",\n        \"club_name\": \"Tech Innovation Club\",\n        \"volunteer_count\": \"3\",\n        \"task_count\": \"5\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.events && json.data.events.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"eventId\")) {",
+                  "        pm.collectionVariables.set(\"eventId\", json.data.events[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Event by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}"
+              ],
+              "query": []
+            },
+            "description": "### Get Event by ID\n\n**Purpose:**\nRetrieves full details of a specific event including club metadata and counts.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER (must belong to the event's club).\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"event\": {\n      \"id\": \"uuid\",\n      \"club_id\": \"uuid\",\n      \"name\": \"AI Innovation Summit 2026\",\n      \"description\": \"...\",\n      \"event_date\": \"2026-10-15T10:00:00.000Z\",\n      \"status\": \"draft\",\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not have access to this event.\n- 404 Not Found: Event does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Event Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}"
+              ],
+              "query": []
+            },
+            "description": "### Update Event Details\n\n**Purpose:**\nUpdates event name, description, or scheduled event date.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `name` (string, optional): Updated event title.\n- `description` (string, optional): Updated description.\n- `eventDate` (ISO Timestamp, optional): Updated event date.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Event updated successfully\",\n  \"data\": {\n    \"event\": {\n      \"id\": \"uuid\",\n      \"club_id\": \"uuid\",\n      \"name\": \"AI Innovation Summit 2026 (Updated)\",\n      \"description\": \"...\",\n      \"event_date\": \"2026-10-15T10:30:00.000Z\",\n      \"status\": \"draft\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Invalid date format.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized for this club.\n- 404 Not Found: Event does not exist.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AI Innovation Summit 2026 (Updated)\",\n  \"description\": \"Updated schedule: keynote speech starts at 10:30 AM in Main Auditorium.\",\n  \"eventDate\": \"2026-10-15T10:30:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Event Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "status"
+              ],
+              "query": []
+            },
+            "description": "### Update Event Status\n\n**Purpose:**\nTransitions event status across supported lifecycle states: `draft`, `published`, `completed`, `cancelled`.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `status` (string, required): Allowed values: `'draft'`, `'published'`, `'completed'`, `'cancelled'`.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Event status updated successfully\",\n  \"data\": {\n    \"event\": {\n      \"id\": \"uuid\",\n      \"status\": \"published\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Invalid status value.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller not authorized.\n- 404 Not Found: Event not found.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"published\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Event",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "cancel"
+              ],
+              "query": []
+            },
+            "description": "### Cancel Event\n\n**Purpose:**\nConvenience endpoint to immediately mark an event's status as `cancelled`.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Event cancelled successfully\",\n  \"data\": {\n    \"event\": {\n      \"id\": \"uuid\",\n      \"status\": \"cancelled\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-admin caller.\n- 404 Not Found: Event not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Volunteers",
+      "item": [
+        {
+          "name": "Assign Volunteer to Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/volunteers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "volunteers"
+              ],
+              "query": []
+            },
+            "description": "### Assign Volunteer to Event\n\n**Purpose:**\nAssigns a club member as a volunteer for a specific event with defined responsibilities and contact info.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `userId` (UUID, required): User ID to assign (`{{volunteerUserId}}`).\n- `responsibility` (string, optional): Assigned responsibility (e.g. Registration, Technical Support, Hospitality).\n- `contact` (string, optional): Contact phone number or handle.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Volunteer assigned to event successfully\",\n  \"data\": {\n    \"assignment\": {\n      \"id\": \"uuid\",\n      \"event_id\": \"uuid\",\n      \"user_id\": \"uuid\",\n      \"responsibility\": \"Registration & Helpdesk Lead\",\n      \"contact\": \"+91 98765 43210\",\n      \"created_at\": \"timestamp\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing userId or invalid payload.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: User is not a member of the event's club.\n- 404 Not Found: User or Event not found.\n- 409 Conflict: Volunteer is already assigned to this event.\n\n**Testing Notes:**\nAutomatically captures assignment ID into `{{volunteerAssignmentId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{volunteerUserId}}\",\n  \"responsibility\": \"Registration & Helpdesk Lead\",\n  \"contact\": \"+91 98765 43210\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.assignment && json.data.assignment.id) {",
+                  "    pm.collectionVariables.set(\"volunteerAssignmentId\", json.data.assignment.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Volunteers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/volunteers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "volunteers"
+              ],
+              "query": []
+            },
+            "description": "### List Event Volunteers\n\n**Purpose:**\nLists all volunteer assignments for the specified event with user names and roles.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"volunteers\": [\n      {\n        \"id\": \"uuid\",\n        \"event_id\": \"uuid\",\n        \"user_id\": \"uuid\",\n        \"user_name\": \"Demo Volunteer\",\n        \"email\": \"volunteer@clubops.ai\",\n        \"responsibility\": \"Registration & Helpdesk Lead\",\n        \"contact\": \"+91 98765 43210\",\n        \"assigned_at\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-member caller.\n- 404 Not Found: Event does not exist."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.volunteers && json.data.volunteers.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"volunteerAssignmentId\")) {",
+                  "        pm.collectionVariables.set(\"volunteerAssignmentId\", json.data.volunteers[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Volunteer Assignment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/volunteers/{{volunteerAssignmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "volunteers",
+                "{{volunteerAssignmentId}}"
+              ],
+              "query": []
+            },
+            "description": "### Update Volunteer Assignment\n\n**Purpose:**\nUpdates the responsibility description and contact information for an assigned volunteer.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `volunteerAssignmentId` (UUID, required): Volunteer assignment ID (`{{volunteerAssignmentId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `responsibility` (string, optional): Updated responsibility string.\n- `contact` (string, optional): Updated contact number or info.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Volunteer assignment updated successfully\",\n  \"data\": {\n    \"assignment\": {\n      \"id\": \"uuid\",\n      \"event_id\": \"uuid\",\n      \"user_id\": \"uuid\",\n      \"responsibility\": \"Stage & Technical Equipment Lead\",\n      \"contact\": \"+91 98765 00000\",\n      \"updated_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Invalid payload.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Unauthorized club access.\n- 404 Not Found: Volunteer assignment not found for this event.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"responsibility\": \"Stage & Technical Equipment Lead\",\n  \"contact\": \"+91 98765 00000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove Volunteer Assignment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/volunteers/{{volunteerAssignmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "volunteers",
+                "{{volunteerAssignmentId}}"
+              ],
+              "query": []
+            },
+            "description": "### Remove Volunteer Assignment\n\n**Purpose:**\nRemoves a volunteer assignment from an event.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `volunteerAssignmentId` (UUID, required): Volunteer assignment ID (`{{volunteerAssignmentId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Volunteer removed from event successfully\"\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Unauthorized club access.\n- 404 Not Found: Assignment not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Event Assignment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/my-assignment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "my-assignment"
+              ],
+              "query": []
+            },
+            "description": "### Get My Event Assignment\n\n**Purpose:**\nAllows an authenticated volunteer or admin to retrieve their own assignment record for the specified event.\n\n**Authentication:**\nRequired (`Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"assignment\": {\n      \"id\": \"uuid\",\n      \"event_id\": \"uuid\",\n      \"user_id\": \"uuid\",\n      \"responsibility\": \"Registration & Helpdesk Lead\",\n      \"contact\": \"+91 98765 43210\",\n      \"created_at\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 404 Not Found: User is not assigned to this event."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "tasks"
+              ],
+              "query": []
+            },
+            "description": "### Create Task\n\n**Purpose:**\nCreates a new task for an event. Assignee must be a member of the event's club.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `description` (string, required): Clear description of the task.\n- `assignedTo` (UUID, optional): User ID of assigned volunteer (`{{volunteerUserId}}`).\n- `deadline` (ISO Timestamp, optional): Completion deadline.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Task created successfully\",\n  \"data\": {\n    \"task\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"description\": \"Set up registration desk...\",\n      \"assignedTo\": \"uuid\",\n      \"deadline\": \"2026-10-14T18:00:00.000Z\",\n      \"status\": \"todo\",\n      \"source\": \"manual\",\n      \"createdAt\": \"timestamp\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing description or invalid deadline format.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Assignee does not belong to this event's club.\n- 404 Not Found: Assignee user not found.\n\n**Testing Notes:**\nAutomatically captures created task ID into `{{taskId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Set up registration desk, test QR code badge scanners, and distribute volunteer kits\",\n  \"assignedTo\": \"{{volunteerUserId}}\",\n  \"deadline\": \"2026-10-14T18:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.task && json.data.task.id) {",
+                  "    pm.collectionVariables.set(\"taskId\", json.data.task.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "tasks"
+              ],
+              "query": []
+            },
+            "description": "### List Event Tasks\n\n**Purpose:**\nLists all tasks for the specified event with assignee names, status, and deadlines.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"tasks\": [\n      {\n        \"id\": \"uuid\",\n        \"eventId\": \"uuid\",\n        \"description\": \"...\",\n        \"assignedTo\": \"uuid\",\n        \"assigneeName\": \"Demo Volunteer\",\n        \"assigneeEmail\": \"volunteer@clubops.ai\",\n        \"deadline\": \"timestamp\",\n        \"status\": \"todo\",\n        \"source\": \"manual\",\n        \"createdAt\": \"timestamp\",\n        \"updatedAt\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-member caller.\n- 404 Not Found: Event not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.tasks && json.data.tasks.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"taskId\")) {",
+                  "        pm.collectionVariables.set(\"taskId\", json.data.tasks[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "tasks",
+                "{{taskId}}"
+              ],
+              "query": []
+            },
+            "description": "### Get Task by ID\n\n**Purpose:**\nRetrieves full details of a specific task.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `taskId` (UUID, required): Target task ID (`{{taskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"task\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"description\": \"...\",\n      \"assignedTo\": \"uuid\",\n      \"assigneeName\": \"Demo Volunteer\",\n      \"deadline\": \"timestamp\",\n      \"status\": \"todo\",\n      \"source\": \"manual\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 404 Not Found: Task not found for this event."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Task Details",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "tasks",
+                "{{taskId}}"
+              ],
+              "query": []
+            },
+            "description": "### Update Task Details\n\n**Purpose:**\nUpdates task description, assignee, and deadline.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `taskId` (UUID, required): Target task ID (`{{taskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `description` (string, optional): Updated task description.\n- `assignedTo` (UUID, optional): Reassigned volunteer user ID.\n- `deadline` (ISO Timestamp, optional): Updated deadline.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Task updated successfully\",\n  \"data\": {\n    \"task\": {\n      \"id\": \"uuid\",\n      \"description\": \"...\",\n      \"assignedTo\": \"uuid\",\n      \"deadline\": \"timestamp\",\n      \"status\": \"todo\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Invalid input format.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Assignee is not part of this club.\n- 404 Not Found: Task not found.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Set up registration desk and verify all 200 printed QR badges\",\n  \"assignedTo\": \"{{volunteerUserId}}\",\n  \"deadline\": \"2026-10-14T20:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Task Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/tasks/{{taskId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "tasks",
+                "{{taskId}}",
+                "status"
+              ],
+              "query": []
+            },
+            "description": "### Update Task Status\n\n**Purpose:**\nUpdates the execution status of a task. Allowed statuses: `todo`, `in_progress`, `done`, `blocked`. Assigned volunteers can update their own tasks; admins can update any task.\n\n**Authentication:**\nRequired (`Bearer {{volunteerToken}}`, `Bearer {{clubAdminToken}}`, or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, or the assigned VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `taskId` (UUID, required): Target task ID (`{{taskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `status` (string, required): One of `'todo'`, `'in_progress'`, `'done'`, `'blocked'`.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Task status updated successfully\",\n  \"data\": {\n    \"task\": {\n      \"id\": \"uuid\",\n      \"status\": \"in_progress\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Invalid status value.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Volunteer is not assigned to this task.\n- 404 Not Found: Task not found.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "tasks",
+                "{{taskId}}"
+              ],
+              "query": []
+            },
+            "description": "### Delete Task\n\n**Purpose:**\nPermanently deletes a task from the event.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `taskId` (UUID, required): Target task ID (`{{taskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Task deleted successfully\"\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-admin caller.\n- 404 Not Found: Task not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 — AI — Meeting Tasks",
+      "item": [
+        {
+          "name": "Extract Tasks from Meeting Notes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/events/{{eventId}}/meeting-tasks/extract",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "events",
+                "{{eventId}}",
+                "meeting-tasks",
+                "extract"
+              ],
+              "query": []
+            },
+            "description": "### Extract Tasks from Meeting Notes (Human-Review Only)\n\n**Purpose:**\nSubmits unstructured meeting notes to Google Gemini AI to extract structured task suggestions. Resolves suggested names against active club members and normalizes deadlines. \n\n> [!IMPORTANT]\n> This endpoint performs **review-only extraction** and does **NOT** write task records to the database.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `meetingNotes` (string, required, max 10,000 chars): Raw text of the meeting notes.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Meeting tasks extracted successfully\",\n  \"data\": {\n    \"event\": {\n      \"id\": \"uuid\",\n      \"name\": \"AI Innovation Summit 2026\"\n    },\n    \"suggestions\": [\n      {\n        \"taskDescription\": \"Coordinate the registration desk and badge distribution\",\n        \"suggestedOwner\": \"Riya Sharma\",\n        \"resolvedOwner\": {\n          \"userId\": \"uuid\",\n          \"name\": \"Riya Sharma\"\n        },\n        \"suggestedDeadline\": \"2026-10-14T17:00:00.000Z\",\n        \"confidence\": \"high\"\n      },\n      {\n        \"taskDescription\": \"Test projector connections and wireless mics in Auditorium A\",\n        \"suggestedOwner\": \"Aarav Patel\",\n        \"resolvedOwner\": null,\n        \"suggestedDeadline\": null,\n        \"confidence\": \"high\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing meetingNotes or length exceeds 10,000 characters.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not have club admin permissions for this event.\n- 502 Bad Gateway: Gemini API service failure.\n- 503 Service Unavailable: GEMINI_API_KEY not configured.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meetingNotes\": \"Core organizing committee meeting notes for AI Innovation Summit 2026:\\n\\n1. Riya Sharma will coordinate the registration desk and badge distribution by 2026-10-14T17:00:00.000Z.\\n2. Aarav Patel must test projector connections and wireless mics in Auditorium A before the technical rehearsal.\\n3. Need someone to arrange 500 boxed lunches and water bottles for speakers and attendees.\\n4. Finalize the main stage backdrop banner and stage lighting rig before 2026-10-14T20:00:00.000Z.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"AI suggestions extracted\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.suggestions).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Accept & Batch Create AI Tasks",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/events/{{eventId}}/meeting-tasks/accept",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "events",
+                "{{eventId}}",
+                "meeting-tasks",
+                "accept"
+              ],
+              "query": []
+            },
+            "description": "### Accept & Batch Create AI Tasks (Atomic Transaction)\n\n**Purpose:**\nReceives reviewed and approved task suggestions from the client and creates real task records in PostgreSQL within an atomic SQL transaction. Sets task `source: 'ai_extracted'` and `status: 'todo'`.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `tasks` (array of objects, required):\n  - `taskDescription` (string, required): Approved description.\n  - `assignedTo` (UUID, optional/null): Verified club member user ID.\n  - `deadline` (ISO Timestamp, optional/null): Task deadline.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"AI tasks created successfully\",\n  \"data\": {\n    \"createdCount\": 3,\n    \"tasks\": [\n      {\n        \"id\": \"uuid\",\n        \"eventId\": \"uuid\",\n        \"description\": \"Coordinate the registration desk...\",\n        \"assignedTo\": \"uuid\",\n        \"deadline\": \"timestamp\",\n        \"status\": \"todo\",\n        \"source\": \"ai_extracted\",\n        \"createdAt\": \"timestamp\",\n        \"updatedAt\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Empty tasks array, invalid deadline, or invalid assignee.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized for this event.\n\n**Testing Notes:**\nCaptures the first created task ID into `{{taskId2}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tasks\": [\n    {\n      \"taskDescription\": \"Coordinate the registration desk and badge distribution\",\n      \"assignedTo\": \"{{volunteerUserId}}\",\n      \"deadline\": \"2026-10-14T17:00:00.000Z\"\n    },\n    {\n      \"taskDescription\": \"Test projector connections and wireless mics in Auditorium A\",\n      \"assignedTo\": null,\n      \"deadline\": \"2026-10-14T19:00:00.000Z\"\n    },\n    {\n      \"taskDescription\": \"Arrange 500 boxed lunches and water bottles for attendees\",\n      \"assignedTo\": null,\n      \"deadline\": null\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.tasks && json.data.tasks.length > 0) {",
+                  "    pm.collectionVariables.set(\"taskId2\", json.data.tasks[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 — Risks",
+      "item": [
+        {
+          "name": "Run Risk Detection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/risks/detect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "risks",
+                "detect"
+              ],
+              "query": []
+            },
+            "description": "### Run Risk Detection (Deterministic Rule Engine)\n\n**Purpose:**\nEvaluates current event state (tasks, deadlines, volunteer count, blockages) against deterministic operational risk rules. Automatically inserts newly detected risks and auto-resolves previously detected risks whose conditions no longer apply.\n\n**Implemented Risk Rules:**\n- `NO_VOLUNTEERS` (critical): Event has 0 assigned volunteers.\n- `LOW_VOLUNTEER_COUNT` (medium): Event has fewer than 3 volunteers.\n- `OVERDUE_TASK` (high): Task deadline passed while status is not 'done'.\n- `BLOCKED_TASK` (high): Task is marked in 'blocked' status.\n- `MULTIPLE_BLOCKED_TASKS` (critical): 3 or more tasks are blocked simultaneously.\n- `UNASSIGNED_TASK` (medium): Task has no assigned volunteer.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Risk detection completed\",\n  \"data\": {\n    \"eventId\": \"uuid\",\n    \"evaluatedRules\": 6,\n    \"activeRiskCount\": 2,\n    \"createdRisks\": [\n      {\n        \"id\": \"uuid\",\n        \"riskCode\": \"UNASSIGNED_TASK\",\n        \"description\": \"Task 'Test projector connections' has no assigned volunteer.\",\n        \"severity\": \"medium\",\n        \"suggestedAction\": \"Assign a club member or volunteer to this task.\"\n      }\n    ],\n    \"resolvedRisks\": []\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized.\n- 404 Not Found: Event not found.\n\n**Testing Notes:**\nAutomatically captures the first detected risk ID into `{{riskId}}`."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.createdRisks && json.data.createdRisks.length > 0) {",
+                  "    pm.collectionVariables.set(\"riskId\", json.data.createdRisks[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Risks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/risks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "risks"
+              ],
+              "query": []
+            },
+            "description": "### List Event Risks\n\n**Purpose:**\nRetrieves all risks recorded for the event, ordered by severity hierarchy (`critical` → `high` → `medium` → `low`) and creation timestamp.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"risks\": [\n      {\n        \"id\": \"uuid\",\n        \"eventId\": \"uuid\",\n        \"riskCode\": \"OVERDUE_TASK\",\n        \"description\": \"...\",\n        \"severity\": \"high\",\n        \"suggestedAction\": \"...\",\n        \"status\": \"open\",\n        \"createdAt\": \"timestamp\",\n        \"updatedAt\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-member caller.\n- 404 Not Found: Event not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.risks && json.data.risks.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"riskId\")) {",
+                  "        pm.collectionVariables.set(\"riskId\", json.data.risks[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Risk by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/risks/{{riskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "risks",
+                "{{riskId}}"
+              ],
+              "query": []
+            },
+            "description": "### Get Risk by ID\n\n**Purpose:**\nRetrieves details of a specific operational risk.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `riskId` (UUID, required): Target risk ID (`{{riskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"risk\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"riskCode\": \"UNASSIGNED_TASK\",\n      \"description\": \"...\",\n      \"severity\": \"medium\",\n      \"suggestedAction\": \"...\",\n      \"status\": \"open\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 404 Not Found: Risk not found for this event."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolve Risk Manually",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/risks/{{riskId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "risks",
+                "{{riskId}}",
+                "resolve"
+              ],
+              "query": []
+            },
+            "description": "### Resolve Risk Manually\n\n**Purpose:**\nManually transitions a risk status to `resolved`.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `riskId` (UUID, required): Target risk ID (`{{riskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Risk resolved successfully\",\n  \"data\": {\n    \"risk\": {\n      \"id\": \"uuid\",\n      \"status\": \"resolved\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not an authorized admin.\n- 404 Not Found: Risk not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reopen Risk Manually",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/risks/{{riskId}}/reopen",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "risks",
+                "{{riskId}}",
+                "reopen"
+              ],
+              "query": []
+            },
+            "description": "### Reopen Risk Manually\n\n**Purpose:**\nReopens a previously resolved risk (`status: 'open'`).\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `riskId` (UUID, required): Target risk ID (`{{riskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Risk reopened successfully\",\n  \"data\": {\n    \"risk\": {\n      \"id\": \"uuid\",\n      \"status\": \"open\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-admin caller.\n- 404 Not Found: Risk not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Explain Risk with AI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/risks/{{riskId}}/explain",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "risks",
+                "{{riskId}}",
+                "explain"
+              ],
+              "query": []
+            },
+            "description": "### Explain Risk with AI (Gemini Operational Advisory)\n\n**Purpose:**\nCalls Google Gemini to generate an advisory explanation, operational impact analysis, and practical recommended actions for an already-detected risk.\n\n> [!NOTE]\n> AI does NOT detect or decide whether the risk exists (which is handled deterministically); AI generates contextual operational recommendations.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `riskId` (UUID, required): Target risk ID (`{{riskId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"risk\": {\n      \"id\": \"uuid\",\n      \"severity\": \"medium\"\n    },\n    \"explanation\": \"This task remains unassigned with less than 24 hours until the event rehearsal...\",\n    \"impact\": \"Delays in stage setup can push back technical checks and opening ceremonies.\",\n    \"recommendedAction\": \"Assign two volunteers from technical operations immediately.\"\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized for this event.\n- 404 Not Found: Risk not found.\n- 502 Bad Gateway: Gemini AI API failure."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"AI explanation returned\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.have.property(\"explanation\");",
+                  "    pm.expect(json.data).to.have.property(\"recommendedAction\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08 — Documents",
+      "item": [
+        {
+          "name": "Create Event Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "documents"
+              ],
+              "query": []
+            },
+            "description": "### Create Event Document\n\n**Purpose:**\nUploads and stores an event-specific knowledge document in PostgreSQL. These documents form the knowledge repository for RAG Q&A queries.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `title` (string, required, max 255 chars): Document title.\n- `content` (string, required, max 50,000 chars): Document content.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Document created successfully\",\n  \"data\": {\n    \"document\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"title\": \"Volunteer Operations & Check-in Guidelines\",\n      \"content\": \"...\",\n      \"uploadedAt\": \"timestamp\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing title or content, or length exceeds limits.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized for this club.\n- 404 Not Found: Event not found.\n\n**Testing Notes:**\nAutomatically saves the created document ID into `{{documentId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Volunteer Operations & Check-in Guidelines\",\n  \"content\": \"Volunteer Operations Guide for AI Innovation Summit 2026:\\n\\n1. Reporting Time:\\nAll volunteers must report to the Main Gate Registration Desk at 08:30 AM sharp.\\n\\n2. Badge Distribution:\\nPre-printed attendee badges and speaker ribbons are located at Counter 3. Only verified student IDs are eligible for badge pickup.\\n\\n3. Emergency Contacts:\\nCampus Security Desk: +91 99999 11111\\nClub Lead: +91 98765 43210\\n\\n4. Lunch & Refreshments:\\nVolunteer lunch vouchers will be distributed at 01:00 PM at the backstage hospitality room.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.document && json.data.document.id) {",
+                  "    pm.collectionVariables.set(\"documentId\", json.data.document.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "documents"
+              ],
+              "query": []
+            },
+            "description": "### List Event Documents\n\n**Purpose:**\nLists all knowledge documents associated with an event (metadata only, without heavy content payloads).\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"documents\": [\n      {\n        \"id\": \"uuid\",\n        \"eventId\": \"uuid\",\n        \"title\": \"Volunteer Operations & Check-in Guidelines\",\n        \"uploadedAt\": \"timestamp\",\n        \"updatedAt\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not member of event's club.\n- 404 Not Found: Event not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.documents && json.data.documents.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"documentId\")) {",
+                  "        pm.collectionVariables.set(\"documentId\", json.data.documents[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Document by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/documents/{{documentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "documents",
+                "{{documentId}}"
+              ],
+              "query": []
+            },
+            "description": "### Get Document by ID\n\n**Purpose:**\nRetrieves full document content and metadata.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `documentId` (UUID, required): Target document ID (`{{documentId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"document\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"title\": \"Volunteer Operations & Check-in Guidelines\",\n      \"content\": \"...\",\n      \"uploadedAt\": \"timestamp\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 404 Not Found: Document not found for this event."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Document",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/documents/{{documentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "documents",
+                "{{documentId}}"
+              ],
+              "query": []
+            },
+            "description": "### Update Document\n\n**Purpose:**\nUpdates title or content of an existing knowledge document.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `documentId` (UUID, required): Target document ID (`{{documentId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `title` (string, optional): Updated document title.\n- `content` (string, optional): Updated document content.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Document updated successfully\",\n  \"data\": {\n    \"document\": {\n      \"id\": \"uuid\",\n      \"title\": \"Volunteer Operations & Check-in Guidelines (v2)\",\n      \"content\": \"...\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Empty title/content.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized.\n- 404 Not Found: Document not found.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Volunteer Operations & Check-in Guidelines (v2)\",\n  \"content\": \"Updated Volunteer Operations Guide:\\nReporting time updated to 08:15 AM sharp at Main Gate Registration Desk.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/documents/{{documentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "documents",
+                "{{documentId}}"
+              ],
+              "query": []
+            },
+            "description": "### Delete Document\n\n**Purpose:**\nPermanently removes a document from the event knowledge base.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `documentId` (UUID, required): Target document ID (`{{documentId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Document deleted successfully\"\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized.\n- 404 Not Found: Document not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "09 — AI — Knowledge RAG",
+      "item": [
+        {
+          "name": "Query Knowledge Base (RAG Q&A)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{volunteerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/events/{{eventId}}/knowledge/query",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "events",
+                "{{eventId}}",
+                "knowledge",
+                "query"
+              ],
+              "query": []
+            },
+            "description": "### Query Knowledge Base (RAG Q&A)\n\n**Purpose:**\nPerforms grounded Retrieval-Augmented Generation (RAG) Q&A over the event's documents stored in PostgreSQL.\n\n**Workflow:**\n1. Searches event documents using weighted keyword and semantic relevance.\n2. Formats retrieved document chunks as strict grounding context.\n3. Passes context and question to Google Gemini.\n4. Returns a factual answer along with source document references. If no relevant documents exist, returns a transparent no-context response without hallucinating.\n\n**Authentication:**\nRequired (`Bearer {{volunteerToken}}`, `Bearer {{clubAdminToken}}`, or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `question` (string, required, max 1,000 chars): Plain text natural language question.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"answer\": \"According to the Volunteer Operations Guide, all volunteers must report to the Main Gate Registration Desk at 08:30 AM sharp. The Campus Security Desk contact number is +91 99999 11111.\",\n    \"sources\": [\n      {\n        \"id\": \"uuid\",\n        \"title\": \"Volunteer Operations & Check-in Guidelines\"\n      }\n    ],\n    \"contextFound\": true\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing question or length exceeds 1,000 chars.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller does not belong to this event's club.\n- 502 Bad Gateway: Gemini AI API failure.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"When should volunteers report to the registration desk and what is the security contact number?\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"RAG answer returned\", function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data).to.have.property(\"answer\");",
+                  "    pm.expect(json.data.sources).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "10 — Announcements",
+      "item": [
+        {
+          "name": "Generate AI Announcement Draft",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/events/{{eventId}}/announcements/generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "events",
+                "{{eventId}}",
+                "announcements",
+                "generate"
+              ],
+              "query": []
+            },
+            "description": "### Generate AI Announcement Draft\n\n**Purpose:**\nGenerates a polished Discord-formatted announcement draft using Google Gemini.\n\n> [!IMPORTANT]\n> This endpoint **ONLY** creates a draft record (`status: 'draft'`, `channel: 'draft'`) and **DOES NOT** dispatch to Discord. The administrator must review, optionally edit, and explicitly confirm dispatch via the Send endpoint.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `purpose` (string, required, max 500 chars): High-level purpose of the announcement.\n- `details` (string, required, max 3,000 chars): Specific details, bullet points, or instructions to include.\n\n**Success Response (201 Created):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Announcement draft generated successfully\",\n  \"data\": {\n    \"announcement\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"draftText\": \"📢 **Volunteer Briefing Reminder — AI Innovation Summit 2026**\n\nHey team! Please remember to report at Main Gate by 08:30 AM...\",\n      \"finalText\": \"📢 **Volunteer Briefing Reminder — AI Innovation Summit 2026**\n\nHey team! Please remember to report at Main Gate by 08:30 AM...\",\n      \"sentAt\": null,\n      \"channel\": \"draft\",\n      \"status\": \"draft\",\n      \"createdAt\": \"timestamp\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing purpose or details.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized for this club.\n- 502 Bad Gateway: Gemini AI generation failure.\n\n**Testing Notes:**\nAutomatically saves the generated announcement ID into `{{announcementId}}`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"purpose\": \"Volunteer briefing and reporting reminder\",\n  \"details\": \"Remind all volunteers about the 08:30 AM reporting time at Main Gate, dress code (black club t-shirt), and badge scanner setup.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.announcement && json.data.announcement.id) {",
+                  "    pm.collectionVariables.set(\"announcementId\", json.data.announcement.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Announcements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/announcements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "announcements"
+              ],
+              "query": []
+            },
+            "description": "### List Event Announcements\n\n**Purpose:**\nLists all draft and sent announcements for the specified event.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"announcements\": [\n      {\n        \"id\": \"uuid\",\n        \"eventId\": \"uuid\",\n        \"draftText\": \"...\",\n        \"finalText\": \"...\",\n        \"sentAt\": null,\n        \"channel\": \"draft\",\n        \"status\": \"draft\",\n        \"createdAt\": \"timestamp\",\n        \"updatedAt\": \"timestamp\"\n      }\n    ]\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-member caller.\n- 404 Not Found: Event not found."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.announcements && json.data.announcements.length > 0) {",
+                  "    if (!pm.collectionVariables.get(\"announcementId\")) {",
+                  "        pm.collectionVariables.set(\"announcementId\", json.data.announcements[0].id);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Announcement by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/announcements/{{announcementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "announcements",
+                "{{announcementId}}"
+              ],
+              "query": []
+            },
+            "description": "### Get Announcement by ID\n\n**Purpose:**\nRetrieves full details of a specific announcement.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}`, `Bearer {{superAdminToken}}`, or `Bearer {{volunteerToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN, CLUB_ADMIN, VOLUNTEER.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `announcementId` (UUID, required): Target announcement ID (`{{announcementId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"announcement\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"draftText\": \"...\",\n      \"finalText\": \"...\",\n      \"sentAt\": null,\n      \"channel\": \"draft\",\n      \"status\": \"draft\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 404 Not Found: Announcement not found for this event."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit / Finalize Announcement Text",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/announcements/{{announcementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "announcements",
+                "{{announcementId}}"
+              ],
+              "query": []
+            },
+            "description": "### Edit / Finalize Announcement Text\n\n**Purpose:**\nAllows human review and editing of the generated announcement before dispatch. Updates `finalText` without changing sent status.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `announcementId` (UUID, required): Target announcement ID (`{{announcementId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\n- `finalText` (string, required, max 5,000 chars): Final revised announcement text.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Announcement updated successfully\",\n  \"data\": {\n    \"announcement\": {\n      \"id\": \"uuid\",\n      \"eventId\": \"uuid\",\n      \"draftText\": \"...\",\n      \"finalText\": \"📢 **IMPORTANT REMINDER...\",\n      \"sentAt\": null,\n      \"channel\": \"draft\",\n      \"status\": \"draft\",\n      \"updatedAt\": \"timestamp\"\n    }\n  }\n}\n```\n\n**Common Errors:**\n- 400 Bad Request: Missing finalText or exceeds 5,000 characters.\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Non-admin caller.\n- 404 Not Found: Announcement not found.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"finalText\": \"📢 **IMPORTANT REMINDER: Volunteer Briefing — AI Innovation Summit 2026**\\n\\nAll volunteers must report to the Main Gate Registration Desk by **08:30 AM tomorrow** in black club t-shirts.\\n\\nSee you all there!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Announcement to Discord Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clubAdminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/events/{{eventId}}/announcements/{{announcementId}}/send",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{eventId}}",
+                "announcements",
+                "{{announcementId}}",
+                "send"
+              ],
+              "query": []
+            },
+            "description": "### Send Announcement to Discord Webhook\n\n**Purpose:**\nExecutes the external application action: sends the reviewed announcement text (`finalText`) to the configured Discord channel via webhook. \n\n**Guarantees & Constraints:**\n- Updates database record `sent_at` and `channel: 'discord'` **ONLY** after successful HTTP 200/204 response from Discord.\n- Re-dispatch prevention: Returns `409 Conflict` if this announcement was already sent previously.\n\n**Authentication:**\nRequired (`Bearer {{clubAdminToken}}` or `Bearer {{superAdminToken}}`).\n\n**Allowed Roles:**\nSUPER_ADMIN or assigned CLUB_ADMIN.\n\n**Path Parameters:**\n- `eventId` (UUID, required): Target event ID (`{{eventId}}`).\n- `announcementId` (UUID, required): Target announcement ID (`{{announcementId}}`).\n\n**Query Parameters:**\nNone.\n\n**Request Body:**\nNone.\n\n**Success Response (200 OK):**\n```json\n{\n  \"success\": true,\n  \"message\": \"Announcement sent successfully to Discord\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"status\": \"sent\",\n    \"channel\": \"discord\",\n    \"sentAt\": \"timestamp\"\n  }\n}\n```\n\n**Common Errors:**\n- 401 Unauthorized: Missing or invalid token.\n- 403 Forbidden: Caller is not authorized for this event.\n- 404 Not Found: Announcement not found.\n- 409 Conflict: Announcement has already been sent.\n- 502 Bad Gateway: Discord webhook rejected the message payload.\n- 503 Service Unavailable: DISCORD_WEBHOOK_URL is not configured on server."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test(\"Announcement dispatched\", function () {",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.status).to.eql(\"sent\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
