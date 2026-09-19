@@ -15,6 +15,8 @@ import Tasks from '../pages/Tasks';
 import Risks from '../pages/Risks';
 import Documents from '../pages/Documents';
 import Knowledge from '../pages/Knowledge';
+import MeetingTasks from '../pages/MeetingTasks';
+import Announcements from '../pages/Announcements';
 import Placeholder from '../pages/Placeholder';
 import Unauthorized from '../pages/Unauthorized';
 import { LoadingState } from '../components/ui/LoadingState';
@@ -106,6 +108,8 @@ export const AppRoutes = () => {
         <Route path="events/:eventId/risks" element={<EventDetails initialTab="risks" />} />
         <Route path="events/:eventId/documents" element={<EventDetails initialTab="documents" />} />
         <Route path="events/:eventId/knowledge" element={<EventDetails initialTab="knowledge" />} />
+        <Route path="events/:eventId/meeting-tasks" element={<EventDetails initialTab="meeting-tasks" />} />
+        <Route path="events/:eventId/announcements" element={<EventDetails initialTab="announcements" />} />
 
         {/* Tasks (SUPER_ADMIN, CLUB_ADMIN, VOLUNTEER) */}
         <Route path="tasks" element={<Tasks />} />
@@ -146,30 +150,13 @@ export const AppRoutes = () => {
           path="meeting-tasks"
           element={
             <RoleRoute allowedRoles={['SUPER_ADMIN', 'CLUB_ADMIN']}>
-              <Placeholder
-                title="AI Meeting Tasks"
-                moduleName="Meeting Intelligence"
-                description="Auto-extract actionable tasks and ownership from meeting notes."
-                deliverableInfo="Meeting transcript parser and task extraction will be connected in Part 7."
-              />
+              <MeetingTasks />
             </RoleRoute>
           }
         />
 
-        {/* Announcements (SUPER_ADMIN, CLUB_ADMIN) */}
-        <Route
-          path="announcements"
-          element={
-            <RoleRoute allowedRoles={['SUPER_ADMIN', 'CLUB_ADMIN']}>
-              <Placeholder
-                title="Announcements"
-                moduleName="Announcements & Broadcasts"
-                description="Draft multi-channel announcements and publish to Discord."
-                deliverableInfo="AI announcement generation and Discord webhook integration will be connected in Part 8."
-              />
-            </RoleRoute>
-          }
-        />
+        {/* Announcements (SUPER_ADMIN, CLUB_ADMIN, VOLUNTEER) */}
+        <Route path="announcements" element={<Announcements />} />
 
         {/* Discord Setup (SUPER_ADMIN, CLUB_ADMIN) */}
         <Route
@@ -180,7 +167,7 @@ export const AppRoutes = () => {
                 title="Discord Integration"
                 moduleName="Discord Webhook Configuration"
                 description="Connect channels and test alert dispatch."
-                deliverableInfo="Discord webhook configuration will be connected in Part 8."
+                deliverableInfo="Discord webhook configuration is securely managed in server environment settings."
               />
             </RoleRoute>
           }

@@ -34,6 +34,8 @@ import EventVolunteersTab from '../components/volunteers/EventVolunteersTab';
 import EventRisksTab from '../components/risks/EventRisksTab';
 import EventDocumentsTab from '../components/documents/EventDocumentsTab';
 import EventKnowledgeTab from '../components/knowledge/EventKnowledgeTab';
+import EventMeetingTasksTab from '../components/meetingTasks/EventMeetingTasksTab';
+import EventAnnouncementsTab from '../components/announcements/EventAnnouncementsTab';
 
 export const EventDetails = ({ initialTab }) => {
   const { eventId } = useParams();
@@ -50,6 +52,7 @@ export const EventDetails = ({ initialTab }) => {
   const [taskCounts, setTaskCounts] = useState({ total: 0, done: 0 });
   const [riskCounts, setRiskCounts] = useState({ total: 0, open: 0 });
   const [documentCount, setDocumentCount] = useState(0);
+  const [announcementCount, setAnnouncementCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -82,12 +85,13 @@ export const EventDetails = ({ initialTab }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const [eventRes, volsRes, tasksRes, risksRes, docsRes] = await Promise.all([
+      const [eventRes, volsRes, tasksRes, risksRes, docsRes, annsRes] = await Promise.all([
         api.get(`events/${eventId}`),
         api.get(`events/${eventId}/volunteers`).catch(() => ({ data: { volunteers: [] } })),
         api.get(`events/${eventId}/tasks`).catch(() => ({ data: { tasks: [] } })),
         api.get(`events/${eventId}/risks`).catch(() => ({ data: { risks: [] } })),
-        api.get(`events/${eventId}/documents`).catch(() => ({ data: { documents: [] } }))
+        api.get(`events/${eventId}/documents`).catch(() => ({ data: { documents: [] } })),
+        api.get(`events/${eventId}/announcements`).catch(() => ({ data: { announcements: [] } }))
       ]);
 
       const evt = eventRes.data?.event;
@@ -106,6 +110,9 @@ export const EventDetails = ({ initialTab }) => {
 
       const docs = docsRes.data?.documents || [];
       setDocumentCount(docs.length);
+
+      const anns = annsRes.data?.data?.announcements || annsRes.data?.announcements || [];
+      setAnnouncementCount(anns.length);
 
       if (evt?.clubId) {
         const clubRes = await api.get(`clubs/${evt.clubId}`).catch(() => ({ data: {} }));
@@ -188,16 +195,6 @@ export const EventDetails = ({ initialTab }) => {
       </div>
     );
   }
-
-  const futureModules = [
-    {
-      id: 'announcements',
-      label: 'Announcements',
-      icon: Megaphone,
-      title: 'AI Announcements & Discord',
-      desc: 'AI announcement drafts with Discord channel webhook dispatch will be available in Part 8.'
-    }
-  ];
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -350,34 +347,40 @@ export const EventDetails = ({ initialTab }) => {
                 : 'border-transparent text-content-secondary hover:text-content-primary'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
+            <BookOpen className="w-4 h-4" />
             Knowledge
           </button>
 
-          {futureModules.map((m) => {
-            const Icon = m.icon;
-            return (
-              <button
-                key={m.id}
-                onClick={() => handleTabChange(m.id)}
-                className={`pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                  activeTab === m.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-content-secondary hover:text-content-primary'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {m.label}
-              </button>
-            );
-          })}
+          <button
+            onClick={() => handleTabChange('meeting-tasks')}
+            className={`pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'meeting-tasks'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-content-secondary hover:text-content-primary'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            Meeting → Tasks
+          </button>
+
+          <button
+            onClick={() => handleTabChange('announcements')}
+            className={`pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'announcements'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-content-secondary hover:text-content-primary'
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            Announcements ({announcementCount})
+          </button>
         </div>
 
         {/* Tab 1: Overview */}
         {activeTab === 'overview' && (
           <div className="space-y-5">
             {/* Quick Operational Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 sm:gap-4">
               <Card
                 className="p-4 bg-surface hover:border-primary cursor-pointer transition-colors"
                 onClick={() => handleTabChange('volunteers')}
@@ -441,6 +444,22 @@ export const EventDetails = ({ initialTab }) => {
                 </div>
                 <div className="text-[11px] text-primary hover:underline mt-1">
                   Knowledge docs →
+                </div>
+              </Card>
+
+              <Card
+                className="p-4 bg-surface hover:border-primary cursor-pointer transition-colors"
+                onClick={() => handleTabChange('announcements')}
+              >
+                <div className="flex items-center justify-between text-content-secondary mb-1">
+                  <span className="text-xs font-semibold uppercase tracking-wider">Broadcasts</span>
+                  <Megaphone className="w-4 h-4 text-primary" />
+                </div>
+                <div className="text-2xl font-bold text-content-primary">
+                  {announcementCount}
+                </div>
+                <div className="text-[11px] text-primary hover:underline mt-1">
+                  Discord drafts →
                 </div>
               </Card>
 
@@ -565,27 +584,27 @@ export const EventDetails = ({ initialTab }) => {
           />
         )}
 
-        {/* Future Module Placeholders */}
-        {futureModules.map((m) => {
-          if (activeTab !== m.id) return null;
-          const Icon = m.icon;
-          return (
-            <div key={m.id} className="p-8 sm:p-12 bg-surface border border-dashed border-border rounded-panel text-center max-w-lg mx-auto space-y-3">
-              <div className="w-10 h-10 rounded-full bg-surface-muted border border-border flex items-center justify-center text-primary mx-auto">
-                <Icon className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm sm:text-base font-bold text-content-primary">
-                {m.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-content-secondary">
-                {m.desc}
-              </p>
-              <Badge variant="neutral" size="sm" icon={<Sparkles className="w-3 h-3 text-primary" />}>
-                Coming in next frontend part
-              </Badge>
-            </div>
-          );
-        })}
+        {/* Tab 7: Meeting -> Tasks (Part 7 Module) */}
+        {activeTab === 'meeting-tasks' && (
+          <EventMeetingTasksTab
+            eventId={eventId}
+            canManage={canManageEvent}
+            onNavigateToTasks={() => handleTabChange('tasks')}
+            onTasksCreated={() => {
+              fetchEventData();
+            }}
+          />
+        )}
+
+        {/* Tab 8: Announcements & Discord Broadcast (Part 8 Module) */}
+        {activeTab === 'announcements' && (
+          <EventAnnouncementsTab
+            eventId={eventId}
+            eventName={event.name}
+            canManage={canManageEvent}
+            onAnnouncementCountChange={(newCount) => setAnnouncementCount(newCount)}
+          />
+        )}
       </div>
 
       {/* Edit Event Modal */}
