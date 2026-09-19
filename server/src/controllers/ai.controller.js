@@ -108,8 +108,14 @@ const extractMeetingTasks = async (req, res, next) => {
       clubName
     };
 
+    // Normalize escaped and raw newlines
+    const normalizedNotes = meetingNotes
+      .trim()
+      .replace(/\\r\\n|\\n|\\r/g, '\n')
+      .replace(/\r\n|\r/g, '\n');
+
     // Call Gemini AI service
-    const rawSuggestions = await geminiService.extractTasksFromMeetingNotes(meetingNotes.trim(), eventContext);
+    const rawSuggestions = await geminiService.extractTasksFromMeetingNotes(normalizedNotes, eventContext);
 
     // Load active club members for owner resolution
     const membersResult = await pool.query(

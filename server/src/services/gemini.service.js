@@ -31,13 +31,22 @@ const validateTaskSuggestionItem = (item) => {
 };
 
 /**
- * Deterministic rule-based extractor fallback when Gemini is unreachable or offline
+ * Deterministic rule-based extractor fallback when Gemini is unreachable, offline, or returns empty
  */
 const extractTasksRuleBasedFallback = (meetingNotes) => {
-  const lines = meetingNotes.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (!meetingNotes || typeof meetingNotes !== 'string') {
+    return [];
+  }
+
+  // Normalize escaped and raw newlines
+  const normalizedText = meetingNotes
+    .replace(/\\r\\n|\\n|\\r/g, '\n')
+    .replace(/\r\n|\r/g, '\n');
+
+  const lines = normalizedText.split('\n').map(l => l.trim()).filter(Boolean);
   const suggestions = [];
 
-  const dateRegex = /(?:by|due|on|before)\s+([A-Za-z]+\s+\d{1,2}(?:,?\s+\d{4})?|\d{4}-\d{2}-\d{2})/i;
+  const dateRegex = /(?:by|due|on|before)\s+(\d{4}-\d{2}-\d{2}(?:T[0-9:.]+Z?)?|(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,?\s+\d{4})?)/i;
   const actionRegex = /^(?:[-*•\d.]+\s*)?([A-Za-z\s]+?)\s+(?:needs to|will|to|must|should|is assigned to)\s+(.+)/i;
 
   for (const line of lines) {
@@ -53,11 +62,12 @@ const extractTasksRuleBasedFallback = (meetingNotes) => {
       let deadline = null;
       const dateMatch = remainingText.match(dateRegex);
       if (dateMatch) {
-        deadline = dateMatch[1];
+        deadline = dateMatch[1].replace(/[.,]$/, '');
       }
 
-      // Check if potentialOwner looks like a person's name (1-3 words)
-      const isPerson = potentialOwner.split(/\s+/).length <= 3 && !/^(food|catering|stage|hall|security|audio)/i.test(potentialOwner);
+      // Check if potentialOwner looks like a person's name (1-3 words and not a generic term)
+      const isPerson = potentialOwner.split(/\s+/).length <= 3 && 
+        !/^(food|catering|stage|hall|security|audio|need|someone|anyone|team|volunteers|organizers|committee|we|they|everyone|all)/i.test(potentialOwner);
 
       const taskDesc = line.replace(/^[-*•\d.]+\s*/, '').trim();
 
@@ -73,7 +83,7 @@ const extractTasksRuleBasedFallback = (meetingNotes) => {
         let deadline = null;
         const dateMatch = cleanText.match(dateRegex);
         if (dateMatch) {
-          deadline = dateMatch[1];
+          deadline = dateMatch[1].replace(/[.,]$/, '');
         }
 
         suggestions.push({
@@ -137,7 +147,7 @@ const extractTasksFromMeetingNotes = async (meetingNotes, eventContext = {}) => 
 
     return validatedSuggestions.length > 0 ? validatedSuggestions : extractTasksRuleBasedFallback(meetingNotes);
   } catch (err) {
-    console.warn('[Gemini Service] Gemini API call error:', err.message, 'Falling back to deterministic parser.');
+    console.log('[AI Meeting Tasks] External Gemini API unavailable, processing via deterministic rule-based extractor.');
     return extractTasksRuleBasedFallback(meetingNotes);
   }
 };
