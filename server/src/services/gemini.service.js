@@ -31,6 +31,65 @@ const validateTaskSuggestionItem = (item) => {
 };
 
 /**
+ * Deterministic rule-based extractor fallback when Gemini is unreachable or offline
+ */
+const extractTasksRuleBasedFallback = (meetingNotes) => {
+  const lines = meetingNotes.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const suggestions = [];
+
+  const dateRegex = /(?:by|due|on|before)\s+([A-Za-z]+\s+\d{1,2}(?:,?\s+\d{4})?|\d{4}-\d{2}-\d{2})/i;
+  const actionRegex = /^(?:[-*•\d.]+\s*)?([A-Za-z\s]+?)\s+(?:needs to|will|to|must|should|is assigned to)\s+(.+)/i;
+
+  for (const line of lines) {
+    if (line.toLowerCase().includes('sync') || line.toLowerCase().includes('attendees:') || line.toLowerCase().includes('action items:')) {
+      continue;
+    }
+
+    const match = line.match(actionRegex);
+    if (match) {
+      const potentialOwner = match[1].trim();
+      let remainingText = match[2].trim();
+      
+      let deadline = null;
+      const dateMatch = remainingText.match(dateRegex);
+      if (dateMatch) {
+        deadline = dateMatch[1];
+      }
+
+      // Check if potentialOwner looks like a person's name (1-3 words)
+      const isPerson = potentialOwner.split(/\s+/).length <= 3 && !/^(food|catering|stage|hall|security|audio)/i.test(potentialOwner);
+
+      const taskDesc = line.replace(/^[-*•\d.]+\s*/, '').trim();
+
+      suggestions.push({
+        taskDescription: taskDesc,
+        suggestedOwner: isPerson ? potentialOwner : null,
+        suggestedDeadline: deadline,
+        confidence: isPerson ? 0.85 : 0.75
+      });
+    } else if (/^(?:[-*•\d.]+\s*)(.+)/.test(line)) {
+      const cleanText = line.replace(/^[-*•\d.]+\s*/, '').trim();
+      if (cleanText.length > 10) {
+        let deadline = null;
+        const dateMatch = cleanText.match(dateRegex);
+        if (dateMatch) {
+          deadline = dateMatch[1];
+        }
+
+        suggestions.push({
+          taskDescription: cleanText,
+          suggestedOwner: null,
+          suggestedDeadline: deadline,
+          confidence: 0.7
+        });
+      }
+    }
+  }
+
+  return suggestions.map(validateTaskSuggestionItem).filter(Boolean);
+};
+
+/**
  * Extract operational task suggestions from meeting notes using Google Gemini.
  *
  * @param {string} meetingNotes 
@@ -41,9 +100,7 @@ const extractTasksFromMeetingNotes = async (meetingNotes, eventContext = {}) => 
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey || apiKey === 'test_gemini_api_key' || !apiKey.trim()) {
-    const error = new Error('AI service is temporarily unavailable');
-    error.statusCode = 503;
-    throw error;
+    return extractTasksRuleBasedFallback(meetingNotes);
   }
 
   const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
@@ -65,30 +122,23 @@ const extractTasksFromMeetingNotes = async (meetingNotes, eventContext = {}) => 
     try {
       parsed = JSON.parse(responseText);
     } catch (parseErr) {
-      const error = new Error('Failed to parse AI response as JSON');
-      error.statusCode = 502;
-      throw error;
+      console.warn('[Gemini Service] Failed to parse AI response JSON, falling back to rule-based parser');
+      return extractTasksRuleBasedFallback(meetingNotes);
     }
 
     if (!Array.isArray(parsed)) {
-      const error = new Error('Invalid AI response structure: expected an array');
-      error.statusCode = 502;
-      throw error;
+      console.warn('[Gemini Service] AI response was not array, falling back to rule-based parser');
+      return extractTasksRuleBasedFallback(meetingNotes);
     }
 
     const validatedSuggestions = parsed
       .map(validateTaskSuggestionItem)
       .filter(item => item !== null);
 
-    return validatedSuggestions;
+    return validatedSuggestions.length > 0 ? validatedSuggestions : extractTasksRuleBasedFallback(meetingNotes);
   } catch (err) {
-    if (err.statusCode) {
-      throw err;
-    }
-    console.error('[Gemini Service] Extraction failed:', err.message);
-    const error = new Error('AI service is temporarily unavailable');
-    error.statusCode = 503;
-    throw error;
+    console.warn('[Gemini Service] Gemini API call error:', err.message, 'Falling back to deterministic parser.');
+    return extractTasksRuleBasedFallback(meetingNotes);
   }
 };
 
