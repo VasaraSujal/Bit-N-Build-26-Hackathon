@@ -19,6 +19,7 @@ import MeetingTasks from '../pages/MeetingTasks';
 import Announcements from '../pages/Announcements';
 import Placeholder from '../pages/Placeholder';
 import Unauthorized from '../pages/Unauthorized';
+import NotFound from '../pages/NotFound';
 import { LoadingState } from '../components/ui/LoadingState';
 
 /**
@@ -187,10 +188,12 @@ export const AppRoutes = () => {
             </RoleRoute>
           }
         />
+        {/* Catch-all 404 inside /app */}
+        <Route path="*" element={<NotFound />} />
       </Route>
 
       {/* Fallback Catch-All Route */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };
