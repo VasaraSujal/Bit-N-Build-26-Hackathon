@@ -1,5 +1,6 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const { Pool } = require('pg');
-require('dotenv').config();
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -12,6 +13,8 @@ if (!connectionString) {
 const isProductionOrCloud = connectionString && (
   connectionString.includes('neon.tech') ||
   connectionString.includes('supabase.co') ||
+  connectionString.includes('supabase.com') ||
+  connectionString.includes('pooler.supabase.com') ||
   connectionString.includes('sslmode=require') ||
   process.env.NODE_ENV === 'production'
 );
