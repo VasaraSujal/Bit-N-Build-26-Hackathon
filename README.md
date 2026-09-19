@@ -1,39 +1,40 @@
 # ClubOps AI
 
-**Bit N Build '26 — Gujarat Round | PS-3: ClubOps AI**
+**AI-powered event operations platform for college clubs — built for Bit N Build'26 Gujarat Round (PS-3).**
 
-> *AI proposes. A human confirms. The application acts.*
+ClubOps AI centralizes everything a college club needs to run an event — tasks, volunteers, risks, documents, and announcements — and layers AI on top so the assistant doesn't just talk, it **acts**: it turns raw meeting notes into real task records, detects operational risks automatically, answers questions from your own event documents, and (with your confirmation) actually sends announcements to Discord.
 
-ClubOps AI is a centralized, AI-powered event operations platform built for college clubs. It replaces scattered WhatsApp groups, spreadsheets, and personal to-do lists with a single workspace where tasks, volunteers, risks, documents, and announcements are managed together — with AI that doesn't just generate text, but performs **real application actions** after human review and confirmation.
-
----
-
-## What Makes ClubOps AI Different
-
-Most AI tools summarize or suggest. ClubOps AI **acts**:
-
-| AI Capability | What Actually Happens |
-|---|---|
-| **Meeting Notes → Tasks** | Paste raw notes → AI extracts tasks with owners and deadlines → human reviews → tasks are written to the database |
-| **Automatic Risk Detection** | Rule engine scans event data → flags overdue/blocked/unassigned tasks and understaffed events → auto-resolves risks that no longer apply |
-| **Knowledge Q&A (RAG)** | Ask a question about your event → AI retrieves relevant document sections → answers are grounded strictly in your uploaded content, never hallucinated |
-| **AI Announcements → Discord** | AI drafts an announcement → human edits and confirms → backend dispatches to a **real Discord channel webhook** — an actual external action |
+The core design principle behind every AI feature here is the same: **AI proposes, a human confirms, and the application acts.**
 
 ---
 
-## PS-3 Deliverables Coverage
+## Table of Contents
 
-| PS-3 Requirement | ClubOps AI Implementation |
-|---|---|
-| AI-assisted event planning | Dashboard with live event status, role-based metrics, and AI-detected risks |
-| Task & volunteer management | Full CRUD with status tracking (`todo → in_progress → done / blocked`), assignments, deadlines |
-| Meeting-note / transcript processing | `POST /api/ai/events/:id/meeting-tasks/extract` — structured extraction via Gemini |
-| Automatic extraction of action items | Task suggestions with description, suggested owner, deadline, and confidence score |
-| Automatic identification of task owners & deadlines | Name-matching against the volunteer roster on the backend; confidence-weighted suggestions in the UI |
-| Risk identification & explanation | 6-rule deterministic engine + Gemini-powered plain-language risk explanations |
-| Club document & knowledge repository | Markdown/text document storage + PostgreSQL token-relevance RAG retrieval |
-| AI-assisted announcements & communication | Gemini drafts → human edits → real Discord webhook dispatch |
-| AI workflows that perform application actions | Meeting tasks write to DB; announcements send to Discord — two real external actions |
+1. [Key Features](#key-features)
+2. [Tech Stack](#tech-stack)
+3. [System Architecture](#system-architecture)
+4. [Database Schema (ER Diagram)](#database-schema-er-diagram)
+5. [AI Workflows (Data Flow Diagrams)](#ai-workflows-data-flow-diagrams)
+6. [Role Permissions Matrix](#role-permissions-matrix)
+7. [Project Structure](#project-structure)
+8. [Getting Started](#getting-started)
+9. [Environment Variables](#environment-variables)
+10. [API Reference](#api-reference)
+11. [Demo Accounts](#demo-accounts)
+
+---
+
+## Key Features
+
+- **Multi-tenant club management** — a platform-level Super Admin manages multiple clubs; each club has exactly one active Club Admin.
+- **Event lifecycle management** — create, update, and track events through `upcoming → ongoing → completed / cancelled` states.
+- **Volunteer roster** — assign club members to events with a specific responsibility and contact info.
+- **Task management** — manual task CRUD plus AI-extracted tasks, tracked through `todo → in_progress → done / blocked`.
+- **Meeting Notes → Tasks (Gemini AI)** — paste raw meeting notes and get back structured task suggestions (description, owner, deadline) that a human reviews before anything is written to the database.
+- **Deterministic risk engine** — a rule-based system (not a black-box model) that detects overdue tasks, blocked tasks, unassigned tasks, and understaffed events, with deduplication and auto-resolution.
+- **Document knowledge repository + RAG Q&A** — upload event documents (guidelines, schedules, venue details) and ask questions; answers are grounded strictly in retrieved content, with an explicit "not enough information" fallback instead of hallucinating.
+- **AI-assisted announcements with real external action** — Gemini drafts an announcement, a human edits and confirms it, and only then does the backend dispatch it to a Discord webhook — the one step in the whole platform where the AI's output leaves the app and does something in the real world.
+- **Role-based access control** — three roles (`SUPER_ADMIN`, `CLUB_ADMIN`, `VOLUNTEER`) enforced at the middleware level on every route, not just in the UI.
 
 ---
 
@@ -41,197 +42,298 @@ Most AI tools summarize or suggest. ClubOps AI **acts**:
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 18 + Vite, React Router v6, Tailwind CSS, lucide-react |
-| **Backend** | Node.js + Express.js |
-| **Database** | PostgreSQL (Neon / Supabase), accessed via `pg` (node-postgres) |
-| **AI** | Google Gemini API (`gemini-1.5-flash`) |
-| **Retrieval (RAG)** | Local PostgreSQL keyword/token relevance scoring + optional Exa API |
-| **External Action** | Discord Webhook API |
-| **Auth** | `bcrypt` (password hashing) + `jsonwebtoken` (JWT, 7-day expiry) |
+| Frontend | React 18 + Vite, React Router v6, Tailwind CSS, lucide-react icons |
+| Backend | Node.js + Express.js |
+| Database | PostgreSQL (Neon / Supabase), accessed via `pg` (node-postgres) |
+| AI | Google Gemini API (`@google/generative-ai`, model: `gemini-1.5-flash`) |
+| Retrieval | Local PostgreSQL token/keyword relevance scoring, with optional Exa API for public search augmentation |
+| External Action | Discord Webhook API |
+| Auth | `bcrypt` (password hashing) + `jsonwebtoken` (JWT, 7-day expiry by default) |
+| Tooling | `dotenv`, `cors`, `nodemon`, ESLint |
 
 ---
 
 ## System Architecture
 
-```
-Browser (React + Vite)
-        │  JWT Bearer token on every request
-        ▼
-Express.js REST API
-        │
-  ┌─────┴─────────────────────────────┐
-  │  Middleware Chain                 │
-  │  auth → role → club/event scope  │
-  └─────┬─────────────────────────────┘
-        │
-  Controllers  →  Service Layer
-                      │
-            ┌─────────┼──────────────────┐
-            ▼         ▼                  ▼
-       PostgreSQL   Gemini API     Discord Webhook
-    (Neon/Supabase) (AI tasks,    (confirmed sends
-                    RAG, drafts)   only — real action)
+```mermaid
+graph TB
+    subgraph Client["Client"]
+        FE["React + Vite Frontend<br/>Tailwind CSS · React Router"]
+    end
+
+    subgraph Server["Express.js Backend"]
+        API["REST API Layer<br/>(app.js)"]
+        MW["Middleware<br/>auth · role · club · event"]
+        CTRL["Controllers"]
+        SVC["Service Layer<br/>gemini · risk · knowledge · announcement · discord · exa · task"]
+    end
+
+    subgraph External["External Services"]
+        GEMINI["Google Gemini API"]
+        DISCORD["Discord Webhook"]
+        EXA["Exa Search API (optional)"]
+    end
+
+    subgraph Data["Data Layer"]
+        PG[("PostgreSQL<br/>Neon / Supabase")]
+    end
+
+    FE -- "REST calls, JWT Bearer token" --> API
+    API --> MW --> CTRL --> SVC
+    SVC -- "SQL (pg pool)" --> PG
+    SVC -- "task extraction, RAG synthesis, drafting" --> GEMINI
+    SVC -- "confirmed send only" --> DISCORD
+    SVC -- "optional public context" --> EXA
 ```
 
-Every authenticated request passes through:
-1. **JWT verification** (`auth.middleware.js`)
-2. **Role authorization** (`role.middleware.js`)
-3. **Scope boundary check** — confirms the user belongs to the club/event they're accessing (`club.middleware.js` / `event.middleware.js`)
+**Request flow:** every authenticated request passes through JWT verification (`auth.middleware.js`), then role authorization (`role.middleware.js`), then — for club- or event-scoped routes — a boundary check (`club.middleware.js` / `event.middleware.js`) that confirms the user actually belongs to the club/event they're trying to touch, before it ever reaches a controller.
 
 ---
 
-## AI Workflows
+## Database Schema (ER Diagram)
 
-### 1. Meeting Notes → Tasks (The core AI action)
+PostgreSQL, all primary keys are UUIDs (`gen_random_uuid()`), all foreign keys cascade or null-out per the relationship's meaning.
 
+```mermaid
+erDiagram
+    CLUBS ||--o{ USERS : "has members"
+    CLUBS ||--o{ EVENTS : organizes
+    EVENTS ||--o{ VOLUNTEERS : "staffed by"
+    USERS ||--o{ VOLUNTEERS : "assigned as"
+    EVENTS ||--o{ TASKS : contains
+    USERS ||--o{ TASKS : "assigned to"
+    EVENTS ||--o{ RISKS : flags
+    EVENTS ||--o{ DOCUMENTS : "knowledge base"
+    EVENTS ||--o{ ANNOUNCEMENTS : sends
+
+    CLUBS {
+        uuid id PK
+        varchar name UK
+        text description
+        text logo_url
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    USERS {
+        uuid id PK
+        varchar name
+        varchar email UK
+        varchar password_hash
+        varchar role "SUPER_ADMIN | CLUB_ADMIN | VOLUNTEER"
+        uuid club_id FK
+        boolean is_active
+    }
+
+    EVENTS {
+        uuid id PK
+        uuid club_id FK
+        varchar name
+        text description
+        timestamptz event_date
+        varchar status "upcoming | ongoing | completed | cancelled"
+    }
+
+    VOLUNTEERS {
+        uuid id PK
+        uuid event_id FK
+        uuid user_id FK
+        varchar responsibility
+        varchar contact
+    }
+
+    TASKS {
+        uuid id PK
+        uuid event_id FK
+        text description
+        uuid assigned_to FK
+        timestamptz deadline
+        varchar status "todo | in_progress | done | blocked"
+        varchar source "manual | ai_extracted"
+    }
+
+    RISKS {
+        uuid id PK
+        uuid event_id FK
+        text description
+        varchar severity "low | medium | high | critical"
+        text suggested_action
+        varchar status "open | resolved"
+        varchar risk_code
+    }
+
+    DOCUMENTS {
+        uuid id PK
+        uuid event_id FK
+        varchar title
+        text content
+        timestamptz uploaded_at
+    }
+
+    ANNOUNCEMENTS {
+        uuid id PK
+        uuid event_id FK
+        text draft_text
+        text final_text
+        timestamptz sent_at
+        varchar channel
+    }
 ```
-Club Admin pastes meeting notes
-        │
-        ▼
-POST /api/ai/events/:id/meeting-tasks/extract
-        │
-        ▼
-Gemini parses notes → returns JSON:
-  { description, suggestedOwner, suggestedDeadline, confidence }
-        │
-  ← No DB write yet →
-        │
-        ▼
-Frontend shows suggestion cards (human reviews each)
-        │
-        ▼
-Admin selects + confirms → POST /accept (batch)
-        │
-        ▼
-Backend atomic transaction:
-  INSERT tasks (source='ai_extracted', status='todo')
-        │
-        ▼
-Task board updates with real, owned, deadlined tasks
-```
 
-**Fallback:** If Gemini is unavailable, a deterministic rule-based parser extracts bullet-point action items — the workflow never fails.
+**Notable constraints beyond the base schema:**
+- `idx_unique_active_club_admin` — a partial unique index ensuring at most one *active* `CLUB_ADMIN` per club.
+- `idx_unique_open_risk_per_code` — a partial unique index ensuring at most one *open* risk per `(event_id, risk_code)`, which is what makes the risk engine idempotent instead of spamming duplicate risk rows every time detection runs.
+- `volunteers` has a unique `(event_id, user_id)` pair — a user can't be double-assigned to the same event.
 
 ---
 
-### 2. Deterministic Risk Engine
+## AI Workflows (Data Flow Diagrams)
 
-Explicitly rule-based — every flagged risk has a traceable cause, not a black-box model decision.
+### 1. Meeting Notes → Tasks
 
-| Risk Code | Trigger Condition | Severity |
+The centerpiece feature: unstructured meeting notes become real, owned, deadlined task rows — but only after a human reviews and accepts them.
+
+```mermaid
+sequenceDiagram
+    participant U as Club Admin
+    participant FE as Frontend
+    participant API as POST /api/ai/events/:id/meeting-tasks
+    participant AI as Gemini Service
+    participant DB as PostgreSQL
+
+    U->>FE: Paste meeting notes (max 10,000 chars)
+    FE->>API: POST /extract
+    API->>AI: buildMeetingTaskPrompt(notes)
+    AI-->>API: Structured task suggestions (JSON: description, owner, deadline, confidence)
+    Note over API,DB: No database write yet
+    API-->>FE: Task suggestion cards
+    FE-->>U: Review — accept / edit / discard each suggestion
+    U->>FE: Confirm selected suggestions
+    FE->>API: POST /accept (batch)
+    API->>DB: BEGIN — INSERT tasks (source='ai_extracted', status='todo')
+    DB-->>API: COMMIT — created task rows
+    API-->>FE: Success
+    FE-->>U: Task board updates live
+```
+
+### 2. Deterministic Risk Detection
+
+Explicitly **rule-based**, not a trained model — every flagged risk has a traceable, explainable cause.
+
+```mermaid
+sequenceDiagram
+    participant U as Club Admin
+    participant API as POST /api/events/:id/risks/detect
+    participant SVC as Risk Service (rule engine)
+    participant DB as PostgreSQL
+
+    U->>API: Trigger detection
+    API->>SVC: Evaluate event's tasks & volunteer counts
+    SVC->>DB: BEGIN TRANSACTION
+    SVC->>DB: Open/reopen newly detected risks (deduped via risk_code)
+    SVC->>DB: Auto-resolve risks that no longer apply
+    DB-->>SVC: COMMIT
+    SVC-->>API: Open risks, sorted CRITICAL → HIGH → MEDIUM → LOW
+    API-->>U: Risk list with severity + suggested action
+```
+
+| Risk Code | Condition | Severity |
 |---|---|---|
 | `OVERDUE_TASK` | Deadline passed, status ≠ `done` | High |
 | `BLOCKED_TASK` | Status is `blocked` | High |
 | `UNASSIGNED_TASK` | No assignee, status ≠ `done` | Medium |
-| `NO_VOLUNTEERS` | 0 volunteers assigned (upcoming/ongoing) | High |
-| `LOW_VOLUNTEER_COUNT` | Below configured minimum | Medium |
+| `NO_VOLUNTEERS` | Event has 0 volunteers (upcoming/ongoing) | High |
+| `LOW_VOLUNTEER_COUNT` | Fewer than `RISK_MIN_VOLUNTEERS` (default 3) | Medium |
 | `MULTIPLE_BLOCKED_TASKS` | 3+ blocked tasks | Critical |
 
-**Deduplication:** A partial unique index on `(event_id, risk_code)` ensures detection runs are idempotent — no duplicate risk rows, and risks auto-resolve when their condition clears.
+### 3. Knowledge Repository RAG Q&A
 
----
+Answers are grounded strictly in retrieved document content — if nothing relevant is found, the system says so instead of guessing.
 
-### 3. RAG Knowledge Q&A
+```mermaid
+sequenceDiagram
+    participant U as User (own club, any role)
+    participant API as POST /api/ai/events/:id/knowledge/query
+    participant KS as Knowledge Service
+    participant DB as PostgreSQL (documents)
+    participant EXA as Exa API (optional)
+    participant AI as Gemini
 
-```
-User asks: "When does volunteer check-in begin?"
-        │
-        ▼
-POST /api/ai/events/:id/knowledge/query
-        │
-        ▼
-Knowledge Service: token/keyword relevance scoring over event documents
-        │
-  ┌─────┴──────────────────────┐
-  │ No relevant context found  │  → "Could not find enough information"
-  │                            │     (explicit refusal — no hallucination)
-  └─────┬──────────────────────┘
-        │ Context retrieved
-        ▼
-Gemini synthesizes answer, strictly grounded in retrieved chunks
-        │
-        ▼
-Response includes answer + source document citations
-```
-
----
-
-### 4. AI Announcement → Discord (The real external action)
-
-```
-Club Admin triggers: "Generate Announcement"
-        │
-        ▼
-POST /api/ai/events/:id/announcements/generate
-Gemini drafts announcement text
-DB: INSERT (draft_text, sent_at = NULL)
-        │
-  ← Draft returned, NOT sent →
-        │
-        ▼
-Human edits final_text → PUT /announcements/:id
-        │
-        ▼
-Human clicks "Send to Discord" → confirmation modal
-        │
-        ▼
-POST /announcements/:id/send
-Backend calls Discord Webhook API → real message in Discord channel
-DB: UPDATE sent_at = NOW(), channel = 'discord'
-        │
-        ▼
-Second send attempt → 409 Conflict (duplicate protection)
+    U->>API: Ask a question
+    API->>KS: retrieve(question)
+    KS->>DB: Token/keyword relevance scoring over event documents
+    alt No relevant context found
+        KS-->>API: "Could not find enough information"
+    else Relevant chunks found
+        KS->>EXA: (optional) supplementary public search
+        KS->>AI: Synthesize answer, strictly grounded in retrieved context
+        AI-->>KS: Answer + source citations
+        KS-->>API: Answer + document sources
+    end
+    API-->>U: Grounded answer with citations (no hallucination)
 ```
 
----
+### 4. AI Announcement Draft → Human Edit → Real Discord Send
 
-## Database Schema
+The one workflow where the AI's output leaves the application entirely.
 
-PostgreSQL with UUID primary keys. Key constraints beyond the base schema:
+```mermaid
+sequenceDiagram
+    participant U as Club Admin
+    participant API as Announcement Endpoints
+    participant AI as Gemini
+    participant DB as PostgreSQL
+    participant DC as Discord Webhook
 
-- **`idx_unique_active_club_admin`** — partial unique index: at most one active `CLUB_ADMIN` per club
-- **`idx_unique_open_risk_per_code`** — partial unique index on `(event_id, risk_code)` where `status = 'open'` — makes risk detection idempotent
-- **`unique(event_id, user_id)`** on volunteers — prevents double-assignment
-
-```
-CLUBS ──< EVENTS ──< TASKS
-                 ──< VOLUNTEERS
-                 ──< RISKS
-                 ──< DOCUMENTS
-                 ──< ANNOUNCEMENTS
-
-USERS ──< VOLUNTEERS (assigned as)
-      ──< TASKS (assigned to)
+    U->>API: POST /ai/.../announcements/generate
+    API->>AI: Draft a professional announcement
+    AI-->>API: Draft text
+    API->>DB: INSERT (draft_text, sent_at = NULL)
+    API-->>U: Draft returned for review
+    U->>API: PUT /.../announcements/:id (edit final_text)
+    API->>DB: UPDATE final_text
+    U->>API: POST /.../announcements/:id/send
+    API->>DC: Dispatch message
+    alt Discord failure
+        DC-->>API: Error
+        API-->>U: 502 Bad Gateway (sent_at stays NULL)
+    else Discord success
+        DC-->>API: OK
+        API->>DB: UPDATE sent_at = NOW(), channel = 'discord'
+        API-->>U: 200 OK (a second send attempt returns 409 Conflict)
+    end
 ```
 
 ---
 
-## Role Permissions
+## Role Permissions Matrix
 
-Three roles enforced at **middleware level** on every route — not just in the UI:
-
-| Action | Super Admin | Club Admin | Volunteer |
+| Resource & Action | Super Admin | Club Admin | Volunteer |
 |---|:---:|:---:|:---:|
-| Manage clubs (create/update/assign) | ✅ | ❌ | ❌ |
-| View own club details | ✅ | ✅ own | ❌ |
-| Create / manage events | ✅ any | ✅ own club | ❌ |
-| View events | ✅ any | ✅ own club | ✅ own club |
-| Assign / manage volunteers | ✅ any | ✅ own club | ❌ |
-| View event volunteers | ✅ | ✅ | ✅ |
-| Create / manage tasks | ✅ any | ✅ own club | ❌ |
-| View tasks | ✅ | ✅ | ✅ own club |
-| Update task status | ✅ | ✅ | ✅ own assigned task |
-| Run risk detection | ✅ | ✅ own | ❌ |
-| View risks | ✅ | ✅ | ✅ own club |
-| Resolve / explain risks | ✅ | ✅ own | ❌ |
-| Upload / manage documents | ✅ | ✅ own | ❌ |
-| View documents | ✅ | ✅ | ✅ own club |
-| RAG knowledge query | ✅ | ✅ | ✅ own club |
-| Extract meeting tasks (AI) | ✅ | ✅ own | ❌ |
-| Accept task suggestions (AI) | ✅ | ✅ own | ❌ |
-| Generate announcement (AI) | ✅ | ✅ own | ❌ |
-| Edit / send announcement | ✅ | ✅ own | ❌ |
-| View announcements | ✅ | ✅ | ✅ own club |
+| Clubs: create / update / activate / deactivate | ✅ | ❌ | ❌ |
+| Clubs: assign admin / volunteers | ✅ | ❌ | ❌ |
+| Clubs: view details / members / summary | ✅ any | ✅ own club | ❌ |
+| Events: create | ✅ any active club | ✅ own active club | ❌ |
+| Events: list / view details | ✅ any | ✅ own club | ✅ own club |
+| Events: update / change status / cancel | ✅ any | ✅ own club | ❌ |
+| Event volunteers: list | ✅ any | ✅ own club | ✅ own club |
+| Event volunteers: assign / update / remove | ✅ any | ✅ own club | ❌ |
+| Tasks: create / update / delete | ✅ any | ✅ own club | ❌ |
+| Tasks: list / view | ✅ any | ✅ own club | ✅ own club |
+| Tasks: update status | ✅ any | ✅ own club | ✅ assigned task only |
+| AI: extract meeting-note suggestions | ✅ any | ✅ own club | ❌ |
+| AI: accept batch suggestions | ✅ any | ✅ own club | ❌ |
+| Risks: run detection | ✅ any | ✅ own club | ❌ |
+| Risks: list / view | ✅ any | ✅ own club | ✅ own club |
+| Risks: resolve / reopen / explain | ✅ any | ✅ own club | ❌ |
+| Documents: create / update / delete | ✅ any | ✅ own club | ❌ |
+| Documents: list / view content | ✅ any | ✅ own club | ✅ own club |
+| Knowledge: RAG query | ✅ any | ✅ own club | ✅ own club |
+| Announcements: generate draft | ✅ any | ✅ own club | ❌ |
+| Announcements: list / view | ✅ any | ✅ own club | ✅ own club |
+| Announcements: edit final text | ✅ any | ✅ own club | ❌ |
+| Announcements: send to Discord | ✅ any | ✅ own club | ❌ |
 
 ---
 
@@ -239,54 +341,58 @@ Three roles enforced at **middleware level** on every route — not just in the 
 
 ```
 Bit-N-Build-26-Hackathon/
-├── frontend/
-│   └── src/
-│       ├── components/
-│       │   ├── announcements/     # Generator, editor, preview, send modals
-│       │   ├── auth/              # ProtectedRoute, RoleRoute
-│       │   ├── clubs/             # Club CRUD + admin assignment
-│       │   ├── documents/         # Document CRUD + reader modal
-│       │   ├── events/            # Event CRUD + status/cancel modals
-│       │   ├── knowledge/         # RAG Q&A tab with session history
-│       │   ├── layout/            # AppShell, Sidebar, Topbar, MobileDrawer
-│       │   ├── meetingTasks/      # Notes form, suggestion cards, acceptance
-│       │   ├── risks/             # Risk list, resolve, AI explanation
-│       │   ├── tasks/             # Task CRUD + status controls
-│       │   ├── ui/                # Button, Modal, Card, Badge, ErrorBoundary...
-│       │   └── volunteers/        # Add/edit/remove + "my assignment" card
-│       ├── config/demoAccounts.js # Env-driven one-click demo logins
-│       ├── context/               # AuthContext (JWT + session restore), ToastContext
-│       ├── lib/api.js             # Hardened fetch wrapper (URL normalization, 401 handling)
-│       ├── lib/auth.js            # localStorage token management
-│       ├── pages/                 # One page per route
-│       └── routes/index.jsx       # Route definitions + role guards + 404
+├── frontend/                      # React + Vite SPA
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── announcements/     # Generate, edit, preview, send modals
+│   │   │   ├── auth/              # ProtectedRoute, RoleRoute
+│   │   │   ├── clubs/             # Club CRUD, admin assignment modals
+│   │   │   ├── documents/         # Document CRUD + viewer
+│   │   │   ├── events/            # Event CRUD, status/cancel modals
+│   │   │   ├── knowledge/         # RAG Q&A tab
+│   │   │   ├── layout/            # AppShell, Sidebar, Topbar, MobileDrawer
+│   │   │   ├── meetingTasks/      # Notes form, suggestion cards, results
+│   │   │   ├── risks/             # Risk list, resolve, AI explanation modals
+│   │   │   ├── tasks/             # Task CRUD + status modal
+│   │   │   ├── ui/                # Shared primitives (Button, Modal, Card, etc.)
+│   │   │   └── volunteers/        # Add/edit/remove volunteer, "my assignment"
+│   │   ├── config/demoAccounts.js # Env-driven demo login credentials
+│   │   ├── context/                # AuthContext, ToastContext
+│   │   ├── lib/                    # api.js (fetch wrapper), auth.js (token storage)
+│   │   ├── pages/                  # One page per route (Dashboard, Events, Tasks, ...)
+│   │   └── routes/index.jsx        # All route definitions + role guards
+│   └── package.json
 │
-└── server/
+└── server/                        # Express REST API
     ├── database/
-    │   ├── migrations/            # 001 initial schema → 006 risk_code index
-    │   └── seeds/                 # Demo clubs, events, users
-    └── src/
-        ├── app.js / server.js     # Express setup + graceful shutdown
-        ├── config/database.js     # pg connection pool
-        ├── controllers/           # auth, club, event, task, risk, document, announcement, ai
-        ├── middleware/            # auth, role, club-boundary, event-boundary
-        ├── routes/                # Grouped by resource
-        └── services/
-            ├── gemini.service.js       # Meeting task extraction + rule-based fallback
-            ├── risk.service.js         # Deterministic 6-rule engine
-            ├── riskExplanation.service.js
-            ├── knowledge.service.js    # RAG retrieval + Gemini synthesis
-            ├── announcement.service.js
-            ├── discord.service.js      # Real webhook dispatch
-            ├── exa.service.js          # Optional public search augmentation
-            └── prompts/                # Prompt builders per AI feature
+    │   ├── migrate.js / seed.js
+    │   ├── migrations/             # 001 initial schema → 006 risk_code
+    │   └── seeds/                  # Demo clubs/events + super admin
+    ├── src/
+    │   ├── app.js / server.js      # Express app + graceful shutdown
+    │   ├── config/database.js      # pg Pool
+    │   ├── controllers/            # One per resource (auth, club, event, task, risk, document, announcement, ai, ...)
+    │   ├── middleware/             # auth, role, club-boundary, event-boundary
+    │   ├── routes/                 # auth, club, event, document, announcement, ai
+    │   ├── services/
+    │   │   ├── gemini.service.js       # Meeting-notes extraction (+ rule-based fallback)
+    │   │   ├── risk.service.js         # Deterministic risk rule engine
+    │   │   ├── riskExplanation.service.js
+    │   │   ├── knowledge.service.js    # RAG retrieval + synthesis
+    │   │   ├── announcement.service.js
+    │   │   ├── discord.service.js      # Webhook dispatch
+    │   │   ├── exa.service.js          # Optional public search
+    │   │   └── prompts/                # Prompt builders per AI feature
+    │   ├── scripts/                # createSuperAdmin.js, seedDemoAccounts.js
+    │   └── utils/auth.js
+    └── package.json
 ```
 
 ---
 
 ## Getting Started
 
-### 1. Clone & Install
+### 1. Clone & install
 
 ```bash
 git clone https://github.com/VasaraSujal/Bit-N-Build-26-Hackathon.git
@@ -299,28 +405,29 @@ cd server && npm install
 cd ../frontend && npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure environment variables
+
+Copy each `.env.example` and fill in real values (see [Environment Variables](#environment-variables)):
 
 ```bash
-# Backend
-cp server/.env.example server/.env
+# from server/
+cp .env.example .env
 
-# Frontend
-cp frontend/.env.example frontend/.env
+# from frontend/
+cp .env.example .env
 ```
 
-Fill in real values — see [Environment Variables](#environment-variables) below.
+### 3. Set up the database
 
-### 3. Set Up the Database
+From `server/`:
 
 ```bash
-cd server
-
-npm run migrate          # Run all SQL migrations in order
-npm run seed             # Seed demo clubs, events, and accounts
+npm run migrate          # runs all SQL files in database/migrations/ in order
+npm run seed              # seeds demo clubs + events
+npm run create:superadmin # optional: create your own super admin (see below)
 ```
 
-To create your own Super Admin:
+To create a bootstrap super admin with your own credentials:
 
 ```bash
 SUPER_ADMIN_NAME="Super Admin" \
@@ -329,209 +436,161 @@ SUPER_ADMIN_PASSWORD="YourSecurePassword123" \
 npm run create:superadmin
 ```
 
-### 4. Run the App
+Or seed the pre-built demo accounts (Super Admin, Club Admin, Volunteer) with `npm run seed` followed by the `seedDemoAccounts.js` script — see [Demo Accounts](#demo-accounts).
+
+### 4. Run the app
 
 ```bash
-# Terminal 1 — Backend (from server/)
-npm run dev      # Starts nodemon on http://localhost:5000
+# Terminal 1 — backend (from server/)
+npm run dev      # nodemon, http://localhost:5000
 
-# Terminal 2 — Frontend (from frontend/)
-npm run dev      # Starts Vite on http://localhost:5173
+# Terminal 2 — frontend (from frontend/)
+npm run dev      # vite, http://localhost:5173
 ```
 
-Open `http://localhost:5173` and log in with a demo account.
-
-### 5. Production Build
-
-```bash
-cd frontend
-npm run build    # Outputs to frontend/dist/
-npm run preview  # Preview the production build locally
-```
+Visit `http://localhost:5173`, log in with a demo account, and you're in.
 
 ---
 
 ## Environment Variables
 
-### Backend — `server/.env`
+### Backend (`server/.env`)
 
-| Variable | Required | Description | Example |
-|---|---|---|---|
-| `PORT` | Yes | API server port | `5000` |
-| `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user:pass@host:5432/postgres` |
-| `JWT_SECRET` | Yes | JWT signing secret (keep private) | `your_strong_random_secret` |
-| `JWT_EXPIRES_IN` | No | Token lifetime | `7d` |
-| `GEMINI_API_KEY` | Yes* | Google Gemini API key | — |
-| `GEMINI_MODEL` | No | Gemini model name | `gemini-1.5-flash` |
-| `EXA_API_KEY` | No | Optional — enables public search augmentation in RAG | — |
-| `DISCORD_WEBHOOK_URL` | Yes* | Discord channel webhook URL | — |
-| `RISK_MIN_VOLUNTEERS` | No | Low-volunteer risk threshold | `3` |
+| Variable | Description | Example |
+|---|---|---|
+| `PORT` | API server port | `5000` |
+| `DATABASE_URL` | PostgreSQL connection string (Neon/Supabase) | `postgresql://user:pass@host:5432/postgres` |
+| `JWT_SECRET` | Secret used to sign JWTs | `your_jwt_secret` |
+| `JWT_EXPIRES_IN` | Token lifetime | `7d` |
+| `GEMINI_API_KEY` | Google Gemini API key | — |
+| `GEMINI_MODEL` | Gemini model name | `gemini-1.5-flash` |
+| `EXA_API_KEY` | Optional — enables public search augmentation in RAG | — |
+| `DISCORD_WEBHOOK_URL` | Discord channel webhook for announcement sending | — |
+| `RISK_MIN_VOLUNTEERS` | Threshold below which `LOW_VOLUNTEER_COUNT` fires | `3` |
 
-> *The app ships graceful fallbacks: if `GEMINI_API_KEY` is absent, meeting-task extraction falls back to a deterministic parser. If `DISCORD_WEBHOOK_URL` is absent, announcements remain draft and the UI reports the configuration gap cleanly.
-
-### Frontend — `frontend/.env`
+### Frontend (`frontend/.env`)
 
 | Variable | Description | Example |
 |---|---|---|
 | `VITE_API_BASE_URL` | Backend API base URL | `http://localhost:5000/api` |
-| `VITE_DEMO_SUPER_ADMIN_EMAIL` / `_PASSWORD` | One-click demo login | `superadmin@clubops.ai` / `Test@12345` |
-| `VITE_DEMO_CLUB_ADMIN_EMAIL` / `_PASSWORD` | One-click demo login | `clubadmin@example.com` / `Test@12345` |
-| `VITE_DEMO_VOLUNTEER_EMAIL` / `_PASSWORD` | One-click demo login | `volunteer@example.com` / `Test@12345` |
-
-> `VITE_*` variables are safe to expose in the browser. No secrets (Gemini key, Discord webhook, database URL, JWT secret) are ever placed in `VITE_*` variables — all sensitive operations stay server-side.
+| `VITE_DEMO_SUPER_ADMIN_EMAIL` / `_PASSWORD` | One-click demo login | — |
+| `VITE_DEMO_CLUB_ADMIN_EMAIL` / `_PASSWORD` | One-click demo login | — |
+| `VITE_DEMO_VOLUNTEER_EMAIL` / `_PASSWORD` | One-click demo login | — |
 
 ---
 
 ## API Reference
 
-All routes (except `/api/auth/register` and `/api/auth/login`) require `Authorization: Bearer <token>`. Routes under `/api/clubs/:clubId` and `/api/events/:eventId` additionally enforce club/event membership.
+All routes except `/api/auth/register` and `/api/auth/login` require `Authorization: Bearer <token>`. Routes under `/api/clubs/:clubId` and `/api/events/:eventId` additionally enforce that the user belongs to that specific club/event.
 
-### Authentication — `/api/auth`
+### Auth — `/api/auth`
 
-| Method | Endpoint | Auth | Description |
+| Method | Endpoint | Access | Description |
 |---|---|---|---|
 | POST | `/register` | Public | Register a new user |
-| POST | `/login` | Public | Sign in, receive JWT |
+| POST | `/login` | Public | Log in, receive JWT |
 | GET | `/me` | Authenticated | Get current user profile |
 
 ### Clubs — `/api/clubs`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/` | Create a club (Super Admin) |
-| GET | `/` | List all clubs (Super Admin) |
-| PUT | `/:clubId` | Update club details (Super Admin) |
-| PATCH | `/:clubId/activate` \| `/deactivate` | Toggle club status (Super Admin) |
-| PATCH | `/:clubId/admin` | Assign / replace Club Admin (Super Admin) |
-| GET | `/:clubId` | Club details |
-| GET | `/:clubId/members` | Club member list |
-| GET | `/:clubId/summary` | Club operational summary |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/` | Super Admin | Create a club |
+| GET | `/` | Super Admin | List all clubs |
+| PUT | `/:clubId` | Super Admin | Update club details |
+| PATCH | `/:clubId/activate` \| `/deactivate` | Super Admin | Toggle club status |
+| PATCH | `/:clubId/admin` | Super Admin | Assign / replace club admin |
+| PATCH | `/:clubId/volunteers/:userId` | Super Admin | Assign volunteer to club |
+| DELETE | `/:clubId/volunteers/:userId` | Super Admin | Remove volunteer from club |
+| GET | `/:clubId` \| `/members` \| `/summary` | Super Admin, own Club Admin | Club details / members / summary |
+| GET | `/:clubId/events` | Super Admin, own club (all roles) | List a club's events |
 
 ### Events — `/api/events`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/` | Create event |
-| GET | `/` | List events |
-| GET | `/:eventId` | Event details |
-| PUT | `/:eventId` | Update event |
-| PATCH | `/:eventId/status` | Change status |
-| PATCH | `/:eventId/cancel` | Cancel event |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/` | Super Admin, Club Admin | Create event |
+| GET | `/` | All roles | List events |
+| GET | `/:eventId` | All roles (own club) | Event details |
+| PUT | `/:eventId` | Super Admin, Club Admin | Update event |
+| PATCH | `/:eventId/status` | Super Admin, Club Admin | Change status |
+| PATCH | `/:eventId/cancel` | Super Admin, Club Admin | Cancel event |
 
 ### Event Volunteers — `/api/events/:eventId/volunteers`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | List volunteers |
-| POST | `/` | Assign volunteer |
-| PUT | `/:volunteerId` | Update assignment |
-| DELETE | `/:volunteerId` | Remove assignment |
-| GET | `/my-assignment` | Current user's own assignment |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/` | All roles (own club) | List event volunteers |
+| POST | `/` | Super Admin, Club Admin | Assign volunteer |
+| PUT | `/:volunteerId` | Super Admin, Club Admin | Update assignment |
+| DELETE | `/:volunteerId` | Super Admin, Club Admin | Remove assignment |
+| GET | `/my-assignment` | All roles | Current user's own assignment |
 
 ### Tasks — `/api/events/:eventId/tasks`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | List tasks |
-| POST | `/` | Create task |
-| GET | `/:taskId` | Task details |
-| PUT | `/:taskId` | Update task |
-| PATCH | `/:taskId/status` | Update status (Volunteer: assigned only) |
-| DELETE | `/:taskId` | Delete task |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/` | All roles (own club) | List tasks |
+| POST | `/` | Super Admin, Club Admin | Create task |
+| GET | `/:taskId` | All roles (own club) | Task details |
+| PUT | `/:taskId` | Super Admin, Club Admin | Update task |
+| PATCH | `/:taskId/status` | All roles* | Update status (*Volunteer: assigned task only) |
+| DELETE | `/:taskId` | Super Admin, Club Admin | Delete task |
 
 ### Risks — `/api/events/:eventId/risks`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/detect` | Run risk detection |
-| GET | `/` | List risks |
-| PATCH | `/:riskId/resolve` \| `/reopen` | Change risk status |
-| POST | `/:riskId/explain` | AI plain-language explanation |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/detect` | Super Admin, Club Admin | Run rule-based risk detection |
+| GET | `/` | All roles (own club) | List risks |
+| GET | `/:riskId` | All roles (own club) | Risk details |
+| PATCH | `/:riskId/resolve` \| `/reopen` | Super Admin, Club Admin | Change risk status |
+| POST | `/:riskId/explain` | Super Admin, Club Admin | AI-generated plain-language explanation |
 
 ### Documents — `/api/events/:eventId/documents`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/` | Upload document |
-| GET | `/` | List documents (metadata only) |
-| GET | `/:documentId` | Full document content |
-| PUT | `/:documentId` | Update document |
-| DELETE | `/:documentId` | Delete document |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/` | Super Admin, Club Admin | Upload document |
+| GET | `/` | All roles (own club) | List metadata (content omitted) |
+| GET | `/:documentId` | All roles (own club) | Full document content |
+| PUT | `/:documentId` | Super Admin, Club Admin | Update document |
+| DELETE | `/:documentId` | Super Admin, Club Admin | Delete document |
 
 ### Announcements — `/api/events/:eventId/announcements`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | List announcements |
-| GET | `/:announcementId` | Announcement details |
-| PUT | `/:announcementId` | Edit final text |
-| POST | `/:announcementId/send` | Dispatch to Discord (confirmed send) |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/` | All roles (own club) | List announcements |
+| GET | `/:announcementId` | All roles (own club) | Announcement details |
+| PUT | `/:announcementId` | Super Admin, Club Admin | Edit / finalize text |
+| POST | `/:announcementId/send` | Super Admin, Club Admin | Dispatch to Discord |
 
-### AI Endpoints — `/api/ai`
+### AI — `/api/ai`
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/events/:eventId/meeting-tasks/extract` | Extract task suggestions from notes (no DB write) |
-| POST | `/events/:eventId/meeting-tasks/accept` | Batch-create accepted suggestions (atomic transaction) |
-| POST | `/events/:eventId/knowledge/query` | RAG Q&A over event documents |
-| POST | `/events/:eventId/announcements/generate` | Generate AI draft (does not send) |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/events/:eventId/meeting-tasks/extract` | Super Admin, Club Admin | Extract task suggestions from notes (no DB write) |
+| POST | `/events/:eventId/meeting-tasks/accept` | Super Admin, Club Admin | Batch-create accepted suggestions (atomic transaction) |
+| POST | `/events/:eventId/knowledge/query` | All roles (own club) | RAG Q&A over event documents |
+| POST | `/events/:eventId/announcements/generate` | Super Admin, Club Admin | Generate AI draft (does not send) |
 
 ---
 
 ## Demo Accounts
 
-Seeded via `npm run seed`. All use password `Test@12345`:
+Seeded via `npm run seed` + the demo-accounts script, all sharing the password `Test@12345` (change these before any real deployment):
 
-| Role | Email |
-|---|---|
-| **Super Admin** | `superadmin@clubops.ai` |
-| **Club Admin** | `clubadmin@example.com` |
-| **Volunteer** | `volunteer@example.com` |
+| Role | Email | Password |
+|---|---|---|
+| Super Admin | `superadmin@clubops.ai` | `Test@12345` |
+| Club Admin | `clubadmin@example.com` | `Test@12345` |
+| Volunteer | `volunteer@example.com` | `Test@12345` |
 
-The login page reads these from `VITE_DEMO_*` environment variables and offers one-click **"Continue as ..."** buttons for fast demo role-switching without typing credentials.
-
----
-
-## Demo Flow (Recommended for Judges)
-
-A single end-to-end demonstration of every AI feature takes under 5 minutes:
-
-```
-1. Log in as Super Admin → view Dashboard
-2. Open an active event → explore Tasks, Volunteers, Risks tabs
-3. Risks tab → Run Detection → see auto-flagged risks with severity labels
-4. Click "Explain Risk" → Gemini generates a plain-language explanation
-5. Documents tab → Upload a schedule document
-6. Knowledge tab → Ask "What time does check-in start?" → see grounded RAG answer with source citation
-7. Meeting Tasks tab → Paste sample meeting notes → Extract → Review suggestion cards → Accept selected tasks
-8. Task board → Verify new AI-extracted tasks now appear as real records
-9. Announcements tab → Generate AI Draft → Edit text → Preview Discord simulation → Send → Verify sent status + timestamp
-10. Log out → Log in as Volunteer → confirm read-only access and role isolation
-```
-
----
-
-## Key Design Decisions
-
-**Why deterministic risks, not an AI model?**
-Risk detection needs to be predictable, auditable, and zero-latency. A rule engine gives you exactly that — every risk has a code, a traceable cause, and an auto-resolution condition. Gemini is used only for the *explanation* step, where natural language generation is genuinely the right tool.
-
-**Why is human confirmation mandatory before every action?**
-Both the meeting-tasks and announcement pipelines have a hard architectural separation between "AI suggests" and "application acts." There is no code path that auto-creates tasks or auto-sends to Discord without an explicit human confirmation step. This is intentional — the platform is an operations tool, not an autonomous agent.
-
-**Why PostgreSQL for RAG retrieval instead of a vector database?**
-For event-scoped document corpora (typically a few thousand tokens), a keyword/token relevance scoring query against PostgreSQL outperforms the operational complexity of standing up a separate vector store. The retrieval quality is sufficient for the use case, and the entire stack stays on a single database.
+The frontend login page reads these from `VITE_DEMO_*` environment variables and offers one-click "Continue as ..." buttons for each role — useful for a fast, reliable live demo.
 
 ---
 
 ## Hackathon Context
 
-**Bit N Build '26 — Gujarat Round | PS-3: ClubOps AI**
-
-The problem statement asks for a platform where the AI layer *performs actual application actions* rather than simply generating text. This is addressed in two concrete, end-to-end workflows:
-
-1. **Meeting Notes → Tasks:** Gemini extracts structured task suggestions from raw notes. After human review and confirmation, an atomic database transaction creates real task rows with owners and deadlines. The AI's output becomes database state.
-
-2. **AI Announcements → Discord:** Gemini drafts an announcement. After human editing and explicit confirmation, the backend dispatches the message to a live Discord webhook. The AI's output becomes a real event in an external service.
-
-Every other AI feature in the platform (risk explanations, RAG answers) is advisory — the system clearly signals this distinction in the UI so users always know when they're seeing a suggestion versus a committed action.
+Built for **Bit N Build'26 — Gujarat Round**, addressing **PS-3: ClubOps AI**. The problem statement asks for a centralized, AI-powered event operations platform where the AI layer doesn't just generate text but performs real application actions. That requirement is satisfied concretely in two places in this codebase: the meeting-notes-to-tasks pipeline writes real, owned, deadlined task rows into the database after human review, and the announcement workflow dispatches a human-confirmed, AI-drafted message to a live Discord webhook.
