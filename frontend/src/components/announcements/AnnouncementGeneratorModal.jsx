@@ -60,7 +60,7 @@ export const AnnouncementGeneratorModal = ({ isOpen, onClose, eventId, onSuccess
         details: details.trim()
       });
 
-      const generated = res.data?.data?.announcement;
+      const generated = res.data?.announcement || res.data?.data?.announcement || res.announcement;
 
       toastSuccess(
         'AI announcement draft generated. Review and edit before sending.',
