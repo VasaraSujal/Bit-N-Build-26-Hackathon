@@ -1,0 +1,11 @@
+-- Seed: 002_create_super_admin.sql
+-- Description: Documentation and instructions for bootstraping SUPER_ADMIN accounts.
+--
+-- IMPORTANT SECURITY NOTICE:
+-- Passwords must NOT be hardcoded in SQL seed files.
+-- To initialize the first SUPER_ADMIN account with bcrypt password hashing, run:
+--
+-- SUPER_ADMIN_NAME="Super Admin" SUPER_ADMIN_EMAIL="admin@clubops.ai" SUPER_ADMIN_PASSWORD="YourSecurePassword123" npm run create:superadmin
+--
+-- Or configure the SUPER_ADMIN_* variables in your environment and execute:
+-- npm run create:superadmin
