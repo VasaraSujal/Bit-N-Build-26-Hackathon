@@ -13,6 +13,7 @@ import Events from '../pages/Events';
 import EventDetails from '../pages/EventDetails';
 import Tasks from '../pages/Tasks';
 import Risks from '../pages/Risks';
+import Volunteers from '../pages/Volunteers';
 import Documents from '../pages/Documents';
 import Knowledge from '../pages/Knowledge';
 import MeetingTasks from '../pages/MeetingTasks';
@@ -120,12 +121,7 @@ export const AppRoutes = () => {
           path="volunteers"
           element={
             <RoleRoute allowedRoles={['SUPER_ADMIN', 'CLUB_ADMIN']}>
-              <Placeholder
-                title="Volunteers"
-                moduleName="Volunteer Roster"
-                description="Organize committee members, roles, responsibilities, and contacts."
-                deliverableInfo="Volunteer roster management will be connected to the backend API in the upcoming implementation phase."
-              />
+              <Volunteers />
             </RoleRoute>
           }
         />
