@@ -1,6 +1,12 @@
 import { getToken, clearAuth } from './auth';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+  const trimmed = envUrl.trim().replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Custom API Error class with normalized status and server message
@@ -18,8 +24,12 @@ export class ApiError extends Error {
  * Core HTTP Request Wrapper using native fetch
  */
 const request = async (endpoint, options = {}) => {
-  const cleanEndpoint = endpoint.replace(/^\//, '');
-  const url = `${API_BASE_URL.replace(/\/$/, '')}/${cleanEndpoint}`;
+  // Strip leading slashes and duplicate 'api/' prefix if provided
+  let cleanEndpoint = endpoint.replace(/^\/+/, '');
+  if (cleanEndpoint.startsWith('api/')) {
+    cleanEndpoint = cleanEndpoint.substring(4);
+  }
+  const url = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -74,7 +84,11 @@ const request = async (endpoint, options = {}) => {
     if (err instanceof ApiError) {
       throw err;
     }
-    throw new ApiError(err.message || 'Network error occurred while connecting to the server.', 0);
+    const isNetworkErr = err?.name === 'TypeError' || err?.message?.toLowerCase().includes('failed to fetch');
+    const userMessage = isNetworkErr
+      ? 'Unable to connect to the server. Please check your network connection or try again.'
+      : err.message || 'An unexpected network error occurred.';
+    throw new ApiError(userMessage, 0);
   }
 };
 
