@@ -63,6 +63,57 @@ const validateTaskAssignee = async (userId, eventId, eventClubId) => {
   return { valid: true, user };
 };
 
-module.exports = {
-  validateTaskAssignee
+/**
+ * Check if the assignee already has a task assigned on the same calendar date for this event.
+ *
+ * @param {string} eventId
+ * @param {string} assignedTo
+ * @param {Date|string} deadline
+ * @param {string} [excludeTaskId]
+ * @returns {Promise<{ hasConflict: boolean, conflictingTasks: Array<{ id: string, description: string, deadline: string, status: string }> }>}
+ */
+const checkSameDayTaskConflict = async (eventId, assignedTo, deadline, excludeTaskId = null) => {
+  if (!assignedTo || !deadline) {
+    return { hasConflict: false, conflictingTasks: [] };
+  }
+
+  let parsedDate;
+  try {
+    parsedDate = new Date(deadline);
+    if (isNaN(parsedDate.getTime())) {
+      return { hasConflict: false, conflictingTasks: [] };
+    }
+  } catch {
+    return { hasConflict: false, conflictingTasks: [] };
+  }
+
+  let query = `
+    SELECT id, description, deadline, status
+    FROM tasks
+    WHERE event_id = $1
+      AND assigned_to = $2
+      AND deadline IS NOT NULL
+      AND DATE(deadline) = DATE($3::timestamptz)
+  `;
+  const params = [eventId, assignedTo, parsedDate.toISOString()];
+
+  if (excludeTaskId) {
+    query += ` AND id != $4`;
+    params.push(excludeTaskId);
+  }
+
+  query += ` ORDER BY deadline ASC`;
+
+  const result = await pool.query(query, params);
+
+  return {
+    hasConflict: result.rows.length > 0,
+    conflictingTasks: result.rows
+  };
 };
+
+module.exports = {
+  validateTaskAssignee,
+  checkSameDayTaskConflict
+};
+

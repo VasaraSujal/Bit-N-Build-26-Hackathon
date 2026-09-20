@@ -1,5 +1,5 @@
 const { pool } = require('../config/database');
-const { validateTaskAssignee } = require('../services/task.service');
+const { validateTaskAssignee, checkSameDayTaskConflict } = require('../services/task.service');
 
 const ALLOWED_TASK_STATUSES = ['todo', 'in_progress', 'done', 'blocked'];
 
@@ -11,7 +11,7 @@ const ALLOWED_TASK_STATUSES = ['todo', 'in_progress', 'done', 'blocked'];
 const createTask = async (req, res, next) => {
   try {
     const { eventId } = req.params;
-    const { description, assignedTo, deadline } = req.body;
+    const { description, assignedTo, deadline, confirmSameDayAssignment, confirm_same_day_assignment } = req.body;
     const event = req.event;
 
     if (!description || typeof description !== 'string' || !description.trim()) {
@@ -49,6 +49,29 @@ const createTask = async (req, res, next) => {
         name: validation.user.name,
         email: validation.user.email
       };
+    }
+
+    // Workload-awareness check: multiple tasks on same calendar day
+    const isConfirmed = confirmSameDayAssignment === true ||
+      confirm_same_day_assignment === true ||
+      confirmSameDayAssignment === 'true' ||
+      confirm_same_day_assignment === 'true';
+
+    if (assignedUserId && parsedDeadline && !isConfirmed) {
+      const conflictCheck = await checkSameDayTaskConflict(eventId, assignedUserId, parsedDeadline);
+      if (conflictCheck.hasConflict) {
+        return res.status(409).json({
+          success: false,
+          requiresConfirmation: true,
+          requires_confirmation: true,
+          conflictType: 'SAME_DAY_TASK_ASSIGNMENT',
+          message: 'This volunteer already has a task assigned on this date. Are you sure you want to assign another task to this volunteer?',
+          data: {
+            conflictingTasks: conflictCheck.conflictingTasks,
+            existing_tasks: conflictCheck.conflictingTasks
+          }
+        });
+      }
     }
 
     const insertResult = await pool.query(
@@ -208,7 +231,7 @@ const getTaskById = async (req, res, next) => {
 const updateTask = async (req, res, next) => {
   try {
     const { eventId, taskId } = req.params;
-    const { description, assignedTo, deadline } = req.body;
+    const { description, assignedTo, deadline, confirmSameDayAssignment, confirm_same_day_assignment } = req.body;
     const event = req.event;
 
     // Check task exists and belongs to this event
@@ -263,6 +286,45 @@ const updateTask = async (req, res, next) => {
         updatedAssignedTo = assignedTo;
       }
     }
+
+    // Workload-awareness check: only required if moving to a different date or volunteer
+    const isAssigneeChanged = updatedAssignedTo !== currentTask.assigned_to;
+    const isDateChanged = (() => {
+      if (!currentTask.deadline && !updatedDeadline) return false;
+      if (!currentTask.deadline || !updatedDeadline) return true;
+      try {
+        const d1 = new Date(currentTask.deadline).toISOString().slice(0, 10);
+        const d2 = new Date(updatedDeadline).toISOString().slice(0, 10);
+        return d1 !== d2;
+      } catch {
+        return true;
+      }
+    })();
+
+    const isAssignmentMoved = isAssigneeChanged || isDateChanged;
+
+    const isConfirmed = confirmSameDayAssignment === true ||
+      confirm_same_day_assignment === true ||
+      confirmSameDayAssignment === 'true' ||
+      confirm_same_day_assignment === 'true';
+
+    if (updatedAssignedTo && updatedDeadline && isAssignmentMoved && !isConfirmed) {
+      const conflictCheck = await checkSameDayTaskConflict(eventId, updatedAssignedTo, updatedDeadline, taskId);
+      if (conflictCheck.hasConflict) {
+        return res.status(409).json({
+          success: false,
+          requiresConfirmation: true,
+          requires_confirmation: true,
+          conflictType: 'SAME_DAY_TASK_ASSIGNMENT',
+          message: 'This volunteer already has a task assigned on this date. Are you sure you want to assign another task to this volunteer?',
+          data: {
+            conflictingTasks: conflictCheck.conflictingTasks,
+            existing_tasks: conflictCheck.conflictingTasks
+          }
+        });
+      }
+    }
+
 
     const updatedDescription = description !== undefined ? description.trim() : currentTask.description;
 
