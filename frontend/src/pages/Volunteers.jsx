@@ -37,6 +37,7 @@ import AddVolunteerModal from '../components/volunteers/AddVolunteerModal';
 import EditVolunteerModal from '../components/volunteers/EditVolunteerModal';
 import RemoveVolunteerModal from '../components/volunteers/RemoveVolunteerModal';
 import CreateMemberModal from '../components/members/CreateMemberModal';
+import MemberProfileModal from '../components/members/MemberProfileModal';
 
 export const Volunteers = () => {
   const { user } = useAuth();
@@ -62,6 +63,7 @@ export const Volunteers = () => {
 
   // Modals State
   const [isCreateMemberModalOpen, setIsCreateMemberModalOpen] = useState(false);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState(null);
   const [isAssignClubModalOpen, setIsAssignClubModalOpen] = useState(false);
   const [selectedVolunteerForClub, setSelectedVolunteerForClub] = useState(null);
 
@@ -442,7 +444,13 @@ export const Volunteers = () => {
                           <div className="w-7 h-7 rounded-full bg-warning-subtle text-warning flex items-center justify-center font-bold text-xs">
                             {u.name.charAt(0).toUpperCase()}
                           </div>
-                          <span>{u.name}</span>
+                          <button
+                            type="button"
+                            className="hover:text-primary hover:underline transition-colors text-left"
+                            onClick={() => setSelectedProfileUserId(u.id)}
+                          >
+                            {u.name}
+                          </button>
                         </td>
                         <td className="py-3 px-4 text-content-secondary">{u.email}</td>
                         <td className="py-3 px-4">
@@ -543,7 +551,13 @@ export const Volunteers = () => {
                             <div className="w-7 h-7 rounded-full bg-primary-subtle text-primary flex items-center justify-center font-bold text-xs">
                               {v.name ? v.name.charAt(0).toUpperCase() : 'V'}
                             </div>
-                            <span>{v.name}</span>
+                            <button
+                              type="button"
+                              className="hover:text-primary hover:underline transition-colors text-left"
+                              onClick={() => setSelectedProfileUserId(v.id)}
+                            >
+                              {v.name}
+                            </button>
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-content-secondary">{v.email}</td>
@@ -836,6 +850,14 @@ export const Volunteers = () => {
         currentUserRole={user?.role}
         currentUserClubId={user?.clubId}
         onSuccess={fetchData}
+      />
+
+      {/* MODAL 0.5: Member 360 Profile Modal */}
+      <MemberProfileModal
+        isOpen={Boolean(selectedProfileUserId)}
+        onClose={() => setSelectedProfileUserId(null)}
+        userId={selectedProfileUserId}
+        onActionSuccess={fetchData}
       />
 
       {/* MODAL 1: Assign to Club (Super Admin & Club Admin) */}
