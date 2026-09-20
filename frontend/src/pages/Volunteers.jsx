@@ -36,6 +36,7 @@ import RemoveClubVolunteerModal from '../components/volunteers/RemoveClubVolunte
 import AddVolunteerModal from '../components/volunteers/AddVolunteerModal';
 import EditVolunteerModal from '../components/volunteers/EditVolunteerModal';
 import RemoveVolunteerModal from '../components/volunteers/RemoveVolunteerModal';
+import CreateMemberModal from '../components/members/CreateMemberModal';
 
 export const Volunteers = () => {
   const { user } = useAuth();
@@ -48,6 +49,7 @@ export const Volunteers = () => {
   // Data State
   const [clubs, setClubs] = useState([]);
   const [events, setEvents] = useState([]);
+  const [unassignedUsers, setUnassignedUsers] = useState([]);
   const [clubMembersMap, setClubMembersMap] = useState({}); // { [clubId]: members[] }
   const [eventVolunteersMap, setEventVolunteersMap] = useState({}); // { [eventId]: volunteers[] }
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +61,7 @@ export const Volunteers = () => {
   const [selectedEventId, setSelectedEventId] = useState('');
 
   // Modals State
+  const [isCreateMemberModalOpen, setIsCreateMemberModalOpen] = useState(false);
   const [isAssignClubModalOpen, setIsAssignClubModalOpen] = useState(false);
   const [selectedVolunteerForClub, setSelectedVolunteerForClub] = useState(null);
 
@@ -77,16 +80,18 @@ export const Volunteers = () => {
     setError(null);
 
     try {
-      // 1. Fetch Clubs & Events
-      const [clubsRes, eventsRes] = await Promise.all([
+      // 1. Fetch Clubs, Events & Unassigned Users
+      const [clubsRes, eventsRes, unassignedRes] = await Promise.all([
         api.get('clubs').catch(() => ({ data: { clubs: [] } })),
-        api.get('events').catch(() => ({ data: { events: [] } }))
+        api.get('events').catch(() => ({ data: { events: [] } })),
+        api.get('users?unassigned=true').catch(() => ({ data: { users: [] } }))
       ]);
 
       const loadedClubs = clubsRes.data?.clubs || [];
       const loadedEvents = eventsRes.data?.events || [];
       setClubs(loadedClubs);
       setEvents(loadedEvents);
+      setUnassignedUsers(unassignedRes.data?.users || []);
 
       if (loadedEvents.length > 0 && !selectedEventId) {
         setSelectedEventId(loadedEvents[0].id);
@@ -218,19 +223,29 @@ export const Volunteers = () => {
           </p>
         </div>
 
-        {isSuperAdmin && (
+        {(isSuperAdmin || isClubAdmin) && (
           <div className="flex items-center gap-2.5">
             <Button
-              variant="primary"
+              variant="secondary"
               size="sm"
               icon={<UserPlus className="w-4 h-4" />}
-              onClick={() => {
-                setSelectedVolunteerForClub(null);
-                setIsAssignClubModalOpen(true);
-              }}
+              onClick={() => setIsCreateMemberModalOpen(true)}
             >
-              Assign to Club
+              Create New Member
             </Button>
+            {isSuperAdmin && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<UserPlus className="w-4 h-4" />}
+                onClick={() => {
+                  setSelectedVolunteerForClub(null);
+                  setIsAssignClubModalOpen(true);
+                }}
+              >
+                Assign to Club
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -312,6 +327,23 @@ export const Volunteers = () => {
         </button>
 
         <button
+          onClick={() => handleTabChange('unassigned')}
+          className={`pb-3 transition-colors flex items-center gap-2 relative ${
+            activeTab === 'unassigned'
+              ? 'text-primary border-b-2 border-primary font-bold'
+              : 'text-content-secondary hover:text-content-primary'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          Unassigned Pool
+          <span className={`px-2 py-0.2 rounded-full text-xs ${
+            unassignedUsers.length > 0 ? 'bg-warning-subtle text-warning font-semibold' : 'bg-surface-muted text-content-secondary'
+          }`}>
+            {unassignedUsers.length}
+          </span>
+        </button>
+
+        <button
           onClick={() => handleTabChange('clubs')}
           className={`pb-3 transition-colors flex items-center gap-2 relative ${
             activeTab === 'clubs'
@@ -352,6 +384,100 @@ export const Volunteers = () => {
           message={error}
           onRetry={fetchData}
         />
+      )}
+
+      {/* TAB 1.5: Unassigned Members Pool */}
+      {!isLoading && !error && activeTab === 'unassigned' && (
+        <div className="space-y-4">
+          <div className="bg-surface border border-border rounded-panel p-4 shadow-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-content-primary flex items-center gap-2">
+                <Layers className="w-4 h-4 text-warning" />
+                Unassigned Campus Members Pool
+              </h3>
+              <p className="text-xs text-content-secondary mt-0.5">
+                Students registered or provisioned on the platform who have not yet been assigned to a club roster.
+              </p>
+            </div>
+            {(isSuperAdmin || isClubAdmin) && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<UserPlus className="w-4 h-4" />}
+                onClick={() => setIsCreateMemberModalOpen(true)}
+              >
+                Provision New Member
+              </Button>
+            )}
+          </div>
+
+          {unassignedUsers.length === 0 ? (
+            <EmptyState
+              title="No unassigned members"
+              description="All registered student members have been assigned to club rosters."
+              actionLabel={isSuperAdmin || isClubAdmin ? 'Provision New Member' : undefined}
+              onAction={
+                (isSuperAdmin || isClubAdmin)
+                  ? () => setIsCreateMemberModalOpen(true)
+                  : undefined
+              }
+            />
+          ) : (
+            <div className="bg-surface border border-border rounded-panel overflow-hidden shadow-subtle">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-muted border-b border-border text-content-secondary uppercase font-semibold">
+                    <tr>
+                      <th className="py-3 px-4">Member Name</th>
+                      <th className="py-3 px-4">Email</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60 text-content-primary">
+                    {unassignedUsers.map((u) => (
+                      <tr key={u.id} className="hover:bg-surface-hover transition-colors">
+                        <td className="py-3 px-4 font-semibold flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-warning-subtle text-warning flex items-center justify-center font-bold text-xs">
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span>{u.name}</span>
+                        </td>
+                        <td className="py-3 px-4 text-content-secondary">{u.email}</td>
+                        <td className="py-3 px-4">
+                          <Badge variant="neutral" size="sm">
+                            {u.role}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4">
+                          <Badge variant="warning" size="sm">
+                            Unassigned
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {(isSuperAdmin || isClubAdmin) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={<UserPlus className="w-3.5 h-3.5" />}
+                              onClick={() => {
+                                setSelectedVolunteerForClub(u);
+                                setIsAssignClubModalOpen(true);
+                              }}
+                            >
+                              Assign to Club
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* TAB 1: All Volunteers Directory */}
@@ -702,7 +828,17 @@ export const Volunteers = () => {
         </div>
       )}
 
-      {/* MODAL 1: Assign to Club (Super Admin) */}
+      {/* MODAL 0: Create Member Modal */}
+      <CreateMemberModal
+        isOpen={isCreateMemberModalOpen}
+        onClose={() => setIsCreateMemberModalOpen(false)}
+        clubs={clubs}
+        currentUserRole={user?.role}
+        currentUserClubId={user?.clubId}
+        onSuccess={fetchData}
+      />
+
+      {/* MODAL 1: Assign to Club (Super Admin & Club Admin) */}
       <AssignClubVolunteerModal
         isOpen={isAssignClubModalOpen}
         onClose={() => {
