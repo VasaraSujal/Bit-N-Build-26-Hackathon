@@ -135,23 +135,18 @@ const listUsers = async (req, res, next) => {
     `;
     const params = [];
 
-    // Filter by unassigned (club_id IS NULL)
-    if (unassigned === 'true') {
-      query += ` AND u.club_id IS NULL`;
-    } else if (clubId) {
-      // If caller is CLUB_ADMIN, prevent looking into unauthorized clubs
-      if (currentUserRole === 'CLUB_ADMIN' && clubId !== currentUserClubId) {
-        return res.status(403).json({
-          success: false,
-          message: 'Club Admins can only view members of their assigned club'
-        });
-      }
-      params.push(clubId);
-      query += ` AND u.club_id = $${params.length}`;
-    } else if (currentUserRole === 'CLUB_ADMIN' && unassigned !== 'true') {
-      // By default for CLUB_ADMIN (if no specific filter), return their club members OR unassigned members
+    // Role-based data isolation
+    if (currentUserRole === 'CLUB_ADMIN') {
       params.push(currentUserClubId);
-      query += ` AND (u.club_id = $${params.length} OR u.club_id IS NULL)`;
+      query += ` AND u.club_id = $${params.length}`;
+    } else {
+      // Filter by unassigned (club_id IS NULL)
+      if (unassigned === 'true') {
+        query += ` AND u.club_id IS NULL`;
+      } else if (clubId) {
+        params.push(clubId);
+        query += ` AND u.club_id = $${params.length}`;
+      }
     }
 
     // Role filter

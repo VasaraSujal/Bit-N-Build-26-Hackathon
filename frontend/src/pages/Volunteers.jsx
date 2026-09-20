@@ -259,14 +259,14 @@ export const Volunteers = () => {
       </div>
 
       {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 ${isSuperAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         <Card className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-primary-subtle text-primary flex items-center justify-center shrink-0">
             <Users className="w-5 h-5" />
           </div>
           <div>
             <p className="text-xs font-medium text-content-secondary uppercase tracking-wider">
-              Total Members
+              {isSuperAdmin ? 'Total Campus Members' : 'Club Roster Members'}
             </p>
             <p className="text-lg sm:text-xl font-bold text-content-primary mt-0.5">
               {isLoading ? '...' : totalVolunteersCount}
@@ -274,19 +274,21 @@ export const Volunteers = () => {
           </div>
         </Card>
 
-        <Card className="p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-warning-subtle text-warning flex items-center justify-center shrink-0">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-content-secondary uppercase tracking-wider">
-              Unassigned Pool
-            </p>
-            <p className="text-lg sm:text-xl font-bold text-content-primary mt-0.5">
-              {isLoading ? '...' : unassignedUsers.length}
-            </p>
-          </div>
-        </Card>
+        {isSuperAdmin && (
+          <Card className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-warning-subtle text-warning flex items-center justify-center shrink-0">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-content-secondary uppercase tracking-wider">
+                Unassigned Pool
+              </p>
+              <p className="text-lg sm:text-xl font-bold text-content-primary mt-0.5">
+                {isLoading ? '...' : unassignedUsers.length}
+              </p>
+            </div>
+          </Card>
+        )}
 
         <Card className="p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-success-subtle text-success flex items-center justify-center shrink-0">
@@ -328,28 +330,30 @@ export const Volunteers = () => {
           }`}
         >
           <Users className="w-4 h-4" />
-          All Campus Members
+          {isSuperAdmin ? 'All Campus Members' : 'Club Roster Members'}
           <span className="px-2 py-0.2 rounded-full text-xs bg-surface-muted text-content-secondary">
             {allCampusMembers.length}
           </span>
         </button>
 
-        <button
-          onClick={() => handleTabChange('unassigned')}
-          className={`pb-3 transition-colors flex items-center gap-2 relative ${
-            activeTab === 'unassigned'
-              ? 'text-primary border-b-2 border-primary font-bold'
-              : 'text-content-secondary hover:text-content-primary'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          Unassigned Pool Directory
-          <span className={`px-2 py-0.2 rounded-full text-xs ${
-            unassignedUsers.length > 0 ? 'bg-warning-subtle text-warning font-semibold' : 'bg-surface-muted text-content-secondary'
-          }`}>
-            {unassignedUsers.length}
-          </span>
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => handleTabChange('unassigned')}
+            className={`pb-3 transition-colors flex items-center gap-2 relative ${
+              activeTab === 'unassigned'
+                ? 'text-primary border-b-2 border-primary font-bold'
+                : 'text-content-secondary hover:text-content-primary'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            Unassigned Pool Directory
+            <span className={`px-2 py-0.2 rounded-full text-xs ${
+              unassignedUsers.length > 0 ? 'bg-warning-subtle text-warning font-semibold' : 'bg-surface-muted text-content-secondary'
+            }`}>
+              {unassignedUsers.length}
+            </span>
+          </button>
+        )}
 
         <button
           onClick={() => handleTabChange('clubs')}
@@ -408,30 +412,32 @@ export const Volunteers = () => {
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-              <div className="w-full sm:w-48">
-                <Select
-                  value={assignmentStatusFilter}
-                  onChange={(e) => setAssignmentStatusFilter(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Members (Both)' },
-                    { value: 'assigned', label: 'Assigned Only' },
-                    { value: 'unassigned', label: 'Unassigned Only' }
-                  ]}
-                />
-              </div>
+            {isSuperAdmin && (
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                <div className="w-full sm:w-48">
+                  <Select
+                    value={assignmentStatusFilter}
+                    onChange={(e) => setAssignmentStatusFilter(e.target.value)}
+                    options={[
+                      { value: 'all', label: 'All Members (Both)' },
+                      { value: 'assigned', label: 'Assigned Only' },
+                      { value: 'unassigned', label: 'Unassigned Only' }
+                    ]}
+                  />
+                </div>
 
-              <div className="w-full sm:w-56">
-                <Select
-                  value={selectedClubFilter}
-                  onChange={(e) => setSelectedClubFilter(e.target.value)}
-                  options={[
-                    { value: '', label: 'All Clubs' },
-                    ...clubs.map((c) => ({ value: c.id, label: c.name }))
-                  ]}
-                />
+                <div className="w-full sm:w-56">
+                  <Select
+                    value={selectedClubFilter}
+                    onChange={(e) => setSelectedClubFilter(e.target.value)}
+                    options={[
+                      { value: '', label: 'All Clubs' },
+                      ...clubs.map((c) => ({ value: c.id, label: c.name }))
+                    ]}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Members Table */}
@@ -513,7 +519,7 @@ export const Volunteers = () => {
                                 title="View 360° Profile"
                                 onClick={() => setSelectedProfileUserId(m.id)}
                               >
-                                <Eye className="w-3.5 h-3.5" />
+                                <Eye className="w-5 h-5 text-content-secondary" />
                               </Button>
 
                               {(isSuperAdmin || isClubAdmin) && (
@@ -523,7 +529,7 @@ export const Volunteers = () => {
                                   title="Edit Member Details"
                                   onClick={() => setEditingMember(m)}
                                 >
-                                  <Edit2 className="w-3.5 h-3.5 text-content-secondary" />
+                                  <Edit2 className="w-5 h-5 text-content-secondary" />
                                 </Button>
                               )}
 
@@ -537,7 +543,7 @@ export const Volunteers = () => {
                                     setIsAssignClubModalOpen(true);
                                   }}
                                 >
-                                  <UserPlus className="w-3.5 h-3.5 text-primary" />
+                                  <UserPlus className="w-5 h-5 text-primary" />
                                 </Button>
                               )}
 
@@ -549,7 +555,7 @@ export const Volunteers = () => {
                                   className="text-danger hover:bg-danger-subtle"
                                   onClick={() => setDeletingMember(m)}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-5 h-5" />
                                 </Button>
                               )}
                             </div>
@@ -648,7 +654,7 @@ export const Volunteers = () => {
                               title="View Profile"
                               onClick={() => setSelectedProfileUserId(u.id)}
                             >
-                              <Eye className="w-3.5 h-3.5" />
+                              <Eye className="w-5 h-5" />
                             </Button>
 
                             {(isSuperAdmin || isClubAdmin) && (
@@ -658,7 +664,7 @@ export const Volunteers = () => {
                                 title="Edit Details"
                                 onClick={() => setEditingMember(u)}
                               >
-                                <Edit2 className="w-3.5 h-3.5" />
+                                <Edit2 className="w-5 h-5" />
                               </Button>
                             )}
 
@@ -666,7 +672,7 @@ export const Volunteers = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                icon={<UserPlus className="w-3.5 h-3.5" />}
+                                icon={<UserPlus className="w-5 h-5" />}
                                 onClick={() => {
                                   setSelectedVolunteerForClub(u);
                                   setIsAssignClubModalOpen(true);
@@ -683,7 +689,7 @@ export const Volunteers = () => {
                                 className="text-danger hover:bg-danger-subtle"
                                 onClick={() => setDeletingMember(u)}
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-5 h-5" />
                               </Button>
                             )}
                           </div>
