@@ -14,6 +14,7 @@ import { useToast } from '../../context/useToast';
 import MeetingNotesForm from './MeetingNotesForm';
 import TaskSuggestions from './TaskSuggestions';
 import CreatedTasksResult from './CreatedTasksResult';
+import { SameDayTaskConfirmationModal } from '../tasks/SameDayTaskConfirmationModal';
 
 export const EventMeetingTasksTab = ({
   eventId,
@@ -30,6 +31,11 @@ export const EventMeetingTasksTab = ({
   const [isAccepting, setIsAccepting] = useState(false);
   const [createdTasks, setCreatedTasks] = useState(null);
   const [error, setError] = useState('');
+
+  // Same-day assignment confirmation state
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictTasks, setConflictTasks] = useState([]);
+
 
   // Handle Extraction Call
   const handleExtract = async () => {
@@ -92,7 +98,7 @@ export const EventMeetingTasksTab = ({
   };
 
   // Accept selected tasks
-  const handleAccept = async () => {
+  const handleAccept = async (confirmed = false) => {
     if (!eventId || !suggestions || selectedIndices.size === 0) return;
 
     const selectedList = suggestions.filter((_, i) => selectedIndices.has(i));
@@ -107,7 +113,8 @@ export const EventMeetingTasksTab = ({
 
     try {
       const res = await api.post(`ai/events/${eventId}/meeting-tasks/accept`, {
-        tasks: payloadTasks
+        tasks: payloadTasks,
+        confirmSameDayAssignment: confirmed ? true : undefined
       });
 
       const newTasks = res.data?.tasks || res.data?.data?.tasks || res.tasks || [];
@@ -115,6 +122,7 @@ export const EventMeetingTasksTab = ({
       setSuggestions(null);
       setSelectedIndices(new Set());
       setNotes('');
+      setShowConflictModal(false);
 
       toastSuccess(
         `${newTasks.length} tasks successfully added to event board.`,
@@ -125,13 +133,21 @@ export const EventMeetingTasksTab = ({
         onTasksCreated(newTasks);
       }
     } catch (err) {
-      setError(
-        err.message || 'Failed to create tasks. Please check and try again.'
-      );
+      const data = err.data;
+      if (err.status === 409 && (data?.requiresConfirmation || data?.requires_confirmation)) {
+        const tasks = data?.data?.conflictingTasks || data?.conflictingTasks || data?.existing_tasks || [];
+        setConflictTasks(tasks);
+        setShowConflictModal(true);
+      } else {
+        setError(
+          err.message || 'Failed to create tasks. Please check and try again.'
+        );
+      }
     } finally {
       setIsAccepting(false);
     }
   };
+
 
   const handleResetWorkflow = () => {
     setNotes('');
@@ -193,8 +209,19 @@ export const EventMeetingTasksTab = ({
           disabled={!canManage}
         />
       )}
+
+      {/* Same-Day Task Assignment Confirmation Modal */}
+      <SameDayTaskConfirmationModal
+        isOpen={showConflictModal}
+        onClose={() => setShowConflictModal(false)}
+        onConfirm={() => handleAccept(true)}
+        conflictingTasks={conflictTasks}
+        isSubmitting={isAccepting}
+      />
+
     </div>
   );
 };
+
 
 export default EventMeetingTasksTab;
