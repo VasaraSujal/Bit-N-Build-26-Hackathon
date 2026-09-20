@@ -24,6 +24,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
 import { useAuth } from '../context/useAuth';
+import { ClubLogo } from '../components/clubs/ClubLogo';
 import EditClubModal from '../components/clubs/EditClubModal';
 import ClubStatusModal from '../components/clubs/ClubStatusModal';
 import ChangeAdminModal from '../components/clubs/ChangeAdminModal';
@@ -165,20 +166,7 @@ export const ClubDetails = () => {
       {/* Main Club Banner Card */}
       <div className="bg-surface border border-border rounded-panel p-5 sm:p-6 shadow-subtle flex flex-col md:flex-row md:items-center md:justify-between gap-5">
         <div className="flex items-start gap-4 min-w-0">
-          {club.logoUrl ? (
-            <img
-              src={club.logoUrl}
-              alt=""
-              className="w-14 h-14 rounded-xl object-cover border border-border shrink-0 shadow-subtle"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-14 h-14 rounded-xl bg-surface-muted border border-border flex items-center justify-center text-primary font-bold text-xl shrink-0">
-              {club.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <ClubLogo logoUrl={club.logoUrl} name={club.name} size="xl" />
 
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">

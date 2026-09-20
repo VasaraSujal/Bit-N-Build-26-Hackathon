@@ -20,6 +20,7 @@ import { LoadingState } from '../components/ui/LoadingState';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { api } from '../lib/api';
+import { ClubLogo } from '../components/clubs/ClubLogo';
 import CreateClubModal from '../components/clubs/CreateClubModal';
 import EditClubModal from '../components/clubs/EditClubModal';
 import ClubStatusModal from '../components/clubs/ClubStatusModal';
@@ -205,20 +206,7 @@ export const Clubs = () => {
                     >
                       <td className="py-3.5 px-4 font-medium text-content-primary">
                         <div className="flex items-center gap-2.5">
-                          {club.logoUrl ? (
-                            <img
-                              src={club.logoUrl}
-                              alt=""
-                              className="w-7 h-7 rounded object-cover border border-border shrink-0"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded bg-surface-muted border border-border flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                              {club.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
+                          <ClubLogo logoUrl={club.logoUrl} name={club.name} size="sm" />
                           <Link
                             to={`/app/clubs/${club.id}`}
                             className="hover:text-primary hover:underline font-semibold"
@@ -295,20 +283,7 @@ export const Clubs = () => {
               <Card key={club.id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {club.logoUrl ? (
-                      <img
-                        src={club.logoUrl}
-                        alt=""
-                        className="w-8 h-8 rounded object-cover border border-border shrink-0"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-surface-muted border border-border flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                        {club.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <ClubLogo logoUrl={club.logoUrl} name={club.name} size="md" />
                     <div className="min-w-0">
                       <Link
                         to={`/app/clubs/${club.id}`}
@@ -321,6 +296,7 @@ export const Clubs = () => {
                       </span>
                     </div>
                   </div>
+
                   <Badge
                     variant={club.isActive ? 'success' : 'neutral'}
                     size="sm"
