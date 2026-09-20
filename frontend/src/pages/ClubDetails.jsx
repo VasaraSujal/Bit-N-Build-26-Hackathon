@@ -29,6 +29,7 @@ import EditClubModal from '../components/clubs/EditClubModal';
 import ClubStatusModal from '../components/clubs/ClubStatusModal';
 import ChangeAdminModal from '../components/clubs/ChangeAdminModal';
 import CreateEventModal from '../components/events/CreateEventModal';
+import MemberProfileModal from '../components/members/MemberProfileModal';
 
 export const ClubDetails = () => {
   const { clubId } = useParams();
@@ -53,6 +54,7 @@ export const ClubDetails = () => {
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isChangeAdminOpen, setIsChangeAdminOpen] = useState(false);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState(null);
 
   const fetchClubData = useCallback(async () => {
     if (!clubId) return;
@@ -380,7 +382,13 @@ export const ClubDetails = () => {
                       {members.map((member) => (
                         <tr key={member.id} className="hover:bg-surface-muted/30">
                           <td className="py-3 px-4 font-medium text-content-primary">
-                            {member.name}
+                            <button
+                              type="button"
+                              className="hover:text-primary hover:underline transition-colors text-left font-semibold"
+                              onClick={() => setSelectedProfileUserId(member.id)}
+                            >
+                              {member.name}
+                            </button>
                           </td>
                           <td className="py-3 px-4 text-content-secondary font-mono text-xs">
                             {member.email}
@@ -586,13 +594,21 @@ export const ClubDetails = () => {
       />
 
       {/* Create Event Modal */}
-      <CreateEventModal
-        isOpen={isCreateEventOpen}
-        onClose={() => setIsCreateEventOpen(false)}
-        preselectedClubId={club.id}
-        onSuccess={() => {
-          fetchClubData();
-        }}
+      {club && (
+        <CreateEventModal
+          isOpen={isCreateEventOpen}
+          onClose={() => setIsCreateEventOpen(false)}
+          defaultClubId={club.id}
+          onSuccess={fetchClubData}
+        />
+      )}
+
+      {/* Member 360 Profile Modal */}
+      <MemberProfileModal
+        isOpen={Boolean(selectedProfileUserId)}
+        onClose={() => setSelectedProfileUserId(null)}
+        userId={selectedProfileUserId}
+        onActionSuccess={fetchClubData}
       />
     </div>
   );

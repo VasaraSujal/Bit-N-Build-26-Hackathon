@@ -162,6 +162,14 @@ const assignVolunteerToClub = async (req, res, next) => {
       });
     }
 
+    // If user is already assigned to a different club and caller is not SUPER_ADMIN, disallow
+    if (user.club_id && user.club_id !== clubId && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'User is currently assigned to another club. Only Super Admin can reassign members across clubs.'
+      });
+    }
+
     const updateResult = await pool.query(
       `UPDATE users 
        SET club_id = $1, updated_at = CURRENT_TIMESTAMP 

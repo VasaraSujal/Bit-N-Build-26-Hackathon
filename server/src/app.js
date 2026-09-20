@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth.routes');
 const clubRoutes = require('./routes/club.routes');
 const eventRoutes = require('./routes/event.routes');
 const aiRoutes = require('./routes/ai.routes');
+const userRoutes = require('./routes/user.routes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clubs', clubRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check route
 app.get('/api/health', async (req, res) => {
