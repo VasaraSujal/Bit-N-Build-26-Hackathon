@@ -38,8 +38,8 @@ router.patch('/:clubId/deactivate', authorizeRoles('SUPER_ADMIN'), deactivateClu
 // 2. Club Admin & Volunteer Management (SUPER_ADMIN only)
 // ==========================================
 router.patch('/:clubId/admin', authorizeRoles('SUPER_ADMIN'), assignOrReplaceClubAdmin);
-router.patch('/:clubId/volunteers/:userId', authorizeRoles('SUPER_ADMIN'), assignVolunteerToClub);
-router.delete('/:clubId/volunteers/:userId', authorizeRoles('SUPER_ADMIN'), removeVolunteerFromClub);
+router.patch('/:clubId/volunteers/:userId', authorizeRoles('SUPER_ADMIN', 'CLUB_ADMIN'), authorizeClubAccess, assignVolunteerToClub);
+router.delete('/:clubId/volunteers/:userId', authorizeRoles('SUPER_ADMIN', 'CLUB_ADMIN'), authorizeClubAccess, removeVolunteerFromClub);
 
 // ==========================================
 // 3. Club Access (SUPER_ADMIN or assigned CLUB_ADMIN)

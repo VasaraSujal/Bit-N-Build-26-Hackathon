@@ -1,0 +1,16 @@
+This md files showcase that what changes  want  for the volunteers. 
+
+=> So currently what happens is that suppose any new user come to join so he/she is joint as a member but for now what happen is that we are direct giveing the a option to register and after thatthey are able to join that group. So now here the problem is that suppose anyone can came make account and joi the club. so here logic is break. Now here what we have to ado is that admin or a super admin can able to add the new member from there side and after they tell the user that this is your id and password. later you can change this password. means we give the invinte . so due to this what it slves is any random can dont do the request. 
+
+=> Now one another thig i want to ask you is that . suppose anyone wjo want to join this events . so during the registration also we assign the club to him. or we can make it in such a way like first we add the members which is the general members means all the mebers of that group . now from that we can assign each member to each group. and they are a volunteer. or we can also name this ember also as a volunteer who is the all the mebembers who are add. now after that we can also assign them direclly wheen we are creting their account . and if we dont want to assign them for now so we add them as member later we assign them to any group. so is my this idea is perfect or you have any changes. 
+
+=> now next the flow i want for the volunteers is that suppose from any collage 200 students cam to our platform and join our events group . now from that we add someone directly to group or someone later. now after that from superadmin we can also make anyone from them as a admin of that group. 
+
+=> Now suppose in sports group we assign 50 students . so now the admin of that club can able to see all teh vlounteers of his group details . they assign the task to that vlount. see his details. and when superadmin click on the club so they can able to see all the students of the group and they can able to assign the task to them directly or make them admin of that group.
+
+=> now suppose in sports group who are organizing two events cricket and volley ball . so for asingng the vunteers for that events. admin can only be able to assign the students for this events who is in this sports club. and when we click on the cricket event and we have to assign the task so at that we only can able to see those students who are choose for the cricket event. means suppose from 50 member for crucket we assign the 20 members. so now when we have to assign the task of crickt event so at taht time we can only able to assign the task to the volunteers of that event . and suppose for cricket all 20 members are busy in thier task and we want new vlounteer so for that first from the free volunteers we can add the volunteers to the cricket event and after that we can assig n the task to him. 
+
+=> so i want this type of flow.
+=> and in super admin can abemto see all member details properly like its history eevents. currentl he is assign in which club, event and cuurently which task is assign to him . they can able to see all the  details. 
+
+=> and also full the gaps which you can say. 
