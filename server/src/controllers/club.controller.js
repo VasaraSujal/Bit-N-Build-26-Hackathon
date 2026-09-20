@@ -1,4 +1,14 @@
 const { pool } = require('../config/database');
+const { uploadClubLogo, deleteClubLogo } = require('../services/cloudinary.service');
+
+const isValidUrl = (string) => {
+  try {
+    const url = new URL(string);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch (_) {
+    return false;
+  }
+};
 
 /**
  * Create a new club
@@ -6,8 +16,21 @@ const { pool } = require('../config/database');
  * Access: SUPER_ADMIN
  */
 const createClub = async (req, res, next) => {
+  let uploadedPublicId = null;
+
   try {
-    const { name, description, logoUrl } = req.body;
+    const { name, description } = req.body;
+    const rawLogoUrl = req.body.logoUrl !== undefined ? req.body.logoUrl : req.body.logo_url;
+    const hasLogoUrl = typeof rawLogoUrl === 'string' && rawLogoUrl.trim().length > 0;
+    const hasLogoFile = Boolean(req.file);
+
+    // Mutual exclusivity check
+    if (hasLogoUrl && hasLogoFile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Choose either a logo URL or upload a local image, not both.'
+      });
+    }
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({
@@ -18,7 +41,7 @@ const createClub = async (req, res, next) => {
 
     const trimmedName = name.trim();
 
-    // Check duplicate club name
+    // Check duplicate club name before doing any file uploads
     const existing = await pool.query(
       'SELECT id FROM clubs WHERE LOWER(name) = LOWER($1)',
       [trimmedName]
@@ -31,11 +54,30 @@ const createClub = async (req, res, next) => {
       });
     }
 
+    let finalLogoUrl = null;
+
+    if (hasLogoFile) {
+      // Local image upload -> Cloudinary
+      const uploadResult = await uploadClubLogo(req.file.buffer, req.file.originalname);
+      finalLogoUrl = uploadResult.secureUrl;
+      uploadedPublicId = uploadResult.publicId;
+    } else if (hasLogoUrl) {
+      const trimmedUrl = rawLogoUrl.trim();
+      if (!isValidUrl(trimmedUrl)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please enter a valid URL (e.g. https://example.com/logo.png)'
+        });
+      }
+      // Web URL -> store directly, NO Cloudinary upload
+      finalLogoUrl = trimmedUrl;
+    }
+
     const result = await pool.query(
       `INSERT INTO clubs (name, description, logo_url, is_active)
        VALUES ($1, $2, $3, TRUE)
        RETURNING id, name, description, logo_url AS "logoUrl", is_active AS "isActive", created_at AS "createdAt", updated_at AS "updatedAt"`,
-      [trimmedName, description ? description.trim() : null, logoUrl ? logoUrl.trim() : null]
+      [trimmedName, description ? description.trim() : null, finalLogoUrl]
     );
 
     return res.status(201).json({
@@ -46,6 +88,10 @@ const createClub = async (req, res, next) => {
       }
     });
   } catch (error) {
+    // If DB or subsequent operation fails after Cloudinary upload, clean up orphaned asset
+    if (uploadedPublicId) {
+      await deleteClubLogo(uploadedPublicId);
+    }
     next(error);
   }
 };
@@ -114,9 +160,22 @@ const getClubById = async (req, res, next) => {
  * Access: SUPER_ADMIN
  */
 const updateClub = async (req, res, next) => {
+  let uploadedPublicId = null;
+
   try {
     const { clubId } = req.params;
-    const { name, description, logoUrl } = req.body;
+    const { name, description, removeLogo } = req.body;
+    const rawLogoUrl = req.body.logoUrl !== undefined ? req.body.logoUrl : req.body.logo_url;
+    const hasLogoUrl = typeof rawLogoUrl === 'string' && rawLogoUrl.trim().length > 0;
+    const hasLogoFile = Boolean(req.file);
+
+    // Mutual exclusivity check
+    if (hasLogoUrl && hasLogoFile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Choose either a logo URL or upload a local image, not both.'
+      });
+    }
 
     // Check if club exists
     const clubCheck = await pool.query(
@@ -148,8 +207,31 @@ const updateClub = async (req, res, next) => {
       updatedName = trimmedName;
     }
 
-    const updatedDescription = description !== undefined ? (description ? description.trim() : null) : clubCheck.rows[0].description;
-    const updatedLogoUrl = logoUrl !== undefined ? (logoUrl ? logoUrl.trim() : null) : clubCheck.rows[0].logo_url;
+    const updatedDescription = description !== undefined
+      ? (description ? description.trim() : null)
+      : clubCheck.rows[0].description;
+
+    let updatedLogoUrl = clubCheck.rows[0].logo_url;
+
+    if (hasLogoFile) {
+      // Local image upload -> Cloudinary
+      const uploadResult = await uploadClubLogo(req.file.buffer, req.file.originalname);
+      updatedLogoUrl = uploadResult.secureUrl;
+      uploadedPublicId = uploadResult.publicId;
+    } else if (removeLogo === 'true' || removeLogo === true || rawLogoUrl === '' || rawLogoUrl === null) {
+      // Explicit logo removal
+      updatedLogoUrl = null;
+    } else if (hasLogoUrl) {
+      const trimmedUrl = rawLogoUrl.trim();
+      if (!isValidUrl(trimmedUrl)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please enter a valid URL (e.g. https://example.com/logo.png)'
+        });
+      }
+      // Web URL -> store directly, NO Cloudinary upload
+      updatedLogoUrl = trimmedUrl;
+    }
 
     const result = await pool.query(
       `UPDATE clubs
@@ -167,9 +249,13 @@ const updateClub = async (req, res, next) => {
       }
     });
   } catch (error) {
+    if (uploadedPublicId) {
+      await deleteClubLogo(uploadedPublicId);
+    }
     next(error);
   }
 };
+
 
 /**
  * Deactivate a club

@@ -18,6 +18,7 @@ const { getClubEvents } = require('../controllers/event.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { authorizeRoles } = require('../middleware/role.middleware');
 const { authorizeClubAccess } = require('../middleware/club.middleware');
+const { uploadClubLogoMiddleware } = require('../middleware/upload.middleware');
 
 const router = express.Router();
 
@@ -27,9 +28,9 @@ router.use(authenticateToken);
 // ==========================================
 // 1. Club Management (SUPER_ADMIN only)
 // ==========================================
-router.post('/', authorizeRoles('SUPER_ADMIN'), createClub);
+router.post('/', authorizeRoles('SUPER_ADMIN'), uploadClubLogoMiddleware, createClub);
 router.get('/', authorizeRoles('SUPER_ADMIN'), getClubs);
-router.put('/:clubId', authorizeRoles('SUPER_ADMIN'), updateClub);
+router.put('/:clubId', authorizeRoles('SUPER_ADMIN'), uploadClubLogoMiddleware, updateClub);
 router.patch('/:clubId/activate', authorizeRoles('SUPER_ADMIN'), activateClub);
 router.patch('/:clubId/deactivate', authorizeRoles('SUPER_ADMIN'), deactivateClub);
 
