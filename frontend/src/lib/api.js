@@ -32,9 +32,13 @@ const request = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}/${cleanEndpoint}`;
 
   const headers = {
-    'Content-Type': 'application/json',
     ...(options.headers || {})
   };
+
+  // Only set application/json if body is not FormData and Content-Type is not already specified
+  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const token = getToken();
   if (token) {
