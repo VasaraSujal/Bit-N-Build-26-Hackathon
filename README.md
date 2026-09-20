@@ -8,19 +8,54 @@ The core design principle behind every AI feature here is the same: **AI propose
 
 ---
 
+## Project Resources & Demo Links
+
+| Resource | Link | Description |
+|---|---|---|
+| 📑 **Postman Documentation** | [**View Postman API Docs**](https://documenter.getpostman.com/view/39215245/2sBYB1PUXp) | Complete interactive REST API endpoints collection & schemas |
+| 🎬 **Demo Video** | [**Watch Video Demo**](https://drive.google.com/file/d/1a7klUylUJujVBxWSBzA87DN72HwHIqir/view?usp=sharing) | Full walkthrough of the platform, workflows, and AI actions |
+| 📊 **Presentation Deck (PPT)** | [**View Slide Deck**](https://docs.google.com/presentation/d/1gjiB7T8e0K5bk7f84UPyEMnGXspEIwJx/edit?usp=sharing&ouid=111474338614420555356&rtpof=true&sd=true) | Hackathon project overview, architecture, and problem-solution fit |
+
+---
+
 ## Table of Contents
 
-1. [Key Features](#key-features)
-2. [Tech Stack](#tech-stack)
-3. [System Architecture](#system-architecture)
-4. [Database Schema (ER Diagram)](#database-schema-er-diagram)
-5. [AI Workflows (Data Flow Diagrams)](#ai-workflows-data-flow-diagrams)
-6. [Role Permissions Matrix](#role-permissions-matrix)
-7. [Project Structure](#project-structure)
-8. [Getting Started](#getting-started)
-9. [Environment Variables](#environment-variables)
-10. [API Reference](#api-reference)
-11. [Demo Accounts](#demo-accounts)
+1. [Project Resources & Demo Links](#project-resources--demo-links)
+2. [Application Screenshots](#application-screenshots)
+3. [Key Features](#key-features)
+4. [Tech Stack](#tech-stack)
+5. [System Architecture](#system-architecture)
+6. [Database Schema (ER Diagram)](#database-schema-er-diagram)
+7. [AI Workflows (Data Flow Diagrams)](#ai-workflows-data-flow-diagrams)
+8. [Role Permissions Matrix](#role-permissions-matrix)
+9. [Project Structure](#project-structure)
+10. [Getting Started](#getting-started)
+11. [Environment Variables](#environment-variables)
+12. [API Reference & Postman](#api-reference)
+13. [Demo Accounts](#demo-accounts)
+
+---
+
+## Application Screenshots
+
+### 1. Operations Overview & Dashboard
+Global operational console providing real-time metrics for registered clubs, active event counts, upcoming milestones, and quick role-based action triggers.
+
+![Dashboard Overview](screenshots/dashboard-overview.png)
+
+---
+
+### 2. Multi-Club Event Management
+Centralized event lifecycle management table allowing admins to track event schedules, cross-club operations, operational status badges, and direct action portals.
+
+![Event Management](screenshots/event-management.png)
+
+---
+
+### 3. AI Meeting Notes to Structured Tasks
+Extract actionable tasks, assignees, and deadlines from raw meeting notes or transcripts using Google Gemini AI, with mandatory human-in-the-loop confirmation before database persistence.
+
+![AI Meeting Tasks](screenshots/ai-meeting-tasks.png)
 
 ---
 
@@ -480,6 +515,8 @@ Visit `http://localhost:5173`, log in with a demo account, and you're in.
 ---
 
 ## API Reference
+
+> 📘 **Interactive API Documentation**: Explore and test all endpoints with request/response schemas directly on the [**Official Postman Documenter**](https://documenter.getpostman.com/view/39215245/2sBYB1PUXp).
 
 All routes except `/api/auth/register` and `/api/auth/login` require `Authorization: Bearer <token>`. Routes under `/api/clubs/:clubId` and `/api/events/:eventId` additionally enforce that the user belongs to that specific club/event.
 
