@@ -285,8 +285,178 @@ const getUserProfileHistory = async (req, res, next) => {
   }
 };
 
+/**
+ * Update User details (Name, Email, Role, Club, Active Status)
+ * PUT /api/users/:userId
+ * Access: SUPER_ADMIN, CLUB_ADMIN
+ */
+const updateUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, role, clubId, isActive } = req.body;
+    const currentUserRole = req.user.role;
+    const currentUserClubId = req.user.clubId;
+
+    // Check user exists
+    const userCheck = await pool.query(
+      'SELECT id, name, email, role, club_id, is_active FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const existingUser = userCheck.rows[0];
+
+    // Access control for CLUB_ADMIN
+    if (currentUserRole === 'CLUB_ADMIN') {
+      if (existingUser.club_id && existingUser.club_id !== currentUserClubId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Club Admins can only edit members of their assigned club or unassigned members'
+        });
+      }
+    }
+
+    let updatedName = existingUser.name;
+    if (name && typeof name === 'string' && name.trim()) {
+      updatedName = name.trim();
+    }
+
+    let updatedEmail = existingUser.email;
+    if (email && typeof email === 'string' && EMAIL_REGEX.test(email.trim())) {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (normalizedEmail !== existingUser.email) {
+        const dupCheck = await pool.query(
+          'SELECT id FROM users WHERE email = $1 AND id != $2',
+          [normalizedEmail, userId]
+        );
+        if (dupCheck.rows.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: 'Email address is already in use by another user'
+          });
+        }
+        updatedEmail = normalizedEmail;
+      }
+    }
+
+    let updatedRole = existingUser.role;
+    if (currentUserRole === 'SUPER_ADMIN' && role) {
+      const allowedRoles = ['VOLUNTEER', 'CLUB_ADMIN', 'SUPER_ADMIN'];
+      if (allowedRoles.includes(role.toUpperCase())) {
+        updatedRole = role.toUpperCase();
+      }
+    }
+
+    let updatedClubId = existingUser.club_id;
+    if (clubId !== undefined) {
+      if (currentUserRole === 'CLUB_ADMIN' && clubId && clubId !== currentUserClubId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Club Admins cannot transfer members to another club'
+        });
+      }
+      updatedClubId = clubId || null;
+    }
+
+    const updatedIsActive = isActive !== undefined ? Boolean(isActive) : existingUser.is_active;
+
+    const result = await pool.query(
+      `UPDATE users
+       SET name = $1, email = $2, role = $3, club_id = $4, is_active = $5, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6
+       RETURNING id, name, email, role, club_id AS "clubId", is_active AS "isActive", updated_at AS "updatedAt"`,
+      [updatedName, updatedEmail, updatedRole, updatedClubId, updatedIsActive, userId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'User details updated successfully',
+      data: {
+        user: result.rows[0]
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Delete User
+ * DELETE /api/users/:userId
+ * Access: SUPER_ADMIN, CLUB_ADMIN
+ */
+const deleteUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const currentUserId = req.user.userId;
+    const currentUserRole = req.user.role;
+    const currentUserClubId = req.user.clubId;
+
+    if (userId === currentUserId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot delete your own account'
+      });
+    }
+
+    // Check user exists
+    const userCheck = await pool.query(
+      `SELECT u.id, u.name, u.email, u.role, u.club_id, c.name AS "clubName"
+       FROM users u
+       LEFT JOIN clubs c ON u.club_id = c.id
+       WHERE u.id = $1`,
+      [userId]
+    );
+
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const targetUser = userCheck.rows[0];
+
+    if (targetUser.role === 'SUPER_ADMIN' && currentUserRole !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Super Admin accounts cannot be deleted'
+      });
+    }
+
+    if (currentUserRole === 'CLUB_ADMIN') {
+      if (targetUser.club_id && targetUser.club_id !== currentUserClubId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Club Admins can only delete members of their own club'
+        });
+      }
+    }
+
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    return res.status(200).json({
+      success: true,
+      message: `User ${targetUser.name} deleted successfully`,
+      data: {
+        deletedUserId: userId
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createUser,
   listUsers,
-  getUserProfileHistory
+  getUserProfileHistory,
+  updateUser,
+  deleteUser
 };

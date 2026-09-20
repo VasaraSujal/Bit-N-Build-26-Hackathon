@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
-import { UserPlus, Building2, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, User } from 'lucide-react';
 import { Modal } from '../ui/Modal';
-import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
@@ -12,34 +11,51 @@ export const AssignClubVolunteerModal = ({
   onClose,
   clubs = [],
   volunteer = null,
+  availableMembers = [],
   onSuccess
 }) => {
   const { success: toastSuccess, error: toastError } = useToast();
   const [selectedClubId, setSelectedClubId] = useState(volunteer?.clubId || '');
-  const [userIdInput, setUserIdInput] = useState(volunteer?.id || '');
+  const [selectedUserId, setSelectedUserId] = useState(volunteer?.id || '');
+  const [memberOptionsList, setMemberOptionsList] = useState([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Update state when modal opens with a specific volunteer
-  React.useEffect(() => {
+  // Update state when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
     if (volunteer) {
       setSelectedClubId(volunteer.clubId || '');
-      setUserIdInput(volunteer.id || '');
+      setSelectedUserId(volunteer.id || '');
       setError('');
     } else {
       setSelectedClubId('');
-      setUserIdInput('');
+      setSelectedUserId('');
       setError('');
+
+      if (availableMembers.length > 0) {
+        setMemberOptionsList(availableMembers);
+      } else {
+        setIsLoadingMembers(true);
+        api.get('users')
+          .then((res) => {
+            setMemberOptionsList(res.data?.users || []);
+          })
+          .catch(() => {})
+          .finally(() => setIsLoadingMembers(false));
+      }
     }
-  }, [volunteer, isOpen]);
+  }, [volunteer, isOpen, availableMembers]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const targetUserId = (volunteer?.id || userIdInput).trim();
+    const targetUserId = (volunteer?.id || selectedUserId).trim();
     const targetClubId = selectedClubId.trim();
 
     if (!targetUserId) {
-      setError('Please provide a valid user ID.');
+      setError('Please select a campus member.');
       return;
     }
 
@@ -76,8 +92,8 @@ export const AssignClubVolunteerModal = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={volunteer ? `Assign ${volunteer.name} to Club` : 'Assign Volunteer to Club'}
-      description="Select the destination club organization to add this student volunteer to its official roster."
+      title={volunteer ? `Assign ${volunteer.name} to Club` : 'Assign Member to Club Roster'}
+      description="Select the destination club organization to add this student member to its official roster."
       footer={
         <>
           <Button
@@ -116,17 +132,22 @@ export const AssignClubVolunteerModal = ({
             <p className="text-xs text-content-secondary">{volunteer.email}</p>
           </div>
         ) : (
-          <Input
-            label="Volunteer User ID"
-            placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000"
-            value={userIdInput}
+          <Select
+            label="Select Campus Member"
+            value={selectedUserId}
             onChange={(e) => {
-              setUserIdInput(e.target.value);
+              setSelectedUserId(e.target.value);
               setError('');
             }}
             required
-            helperText="Enter the UUID of the student volunteer to assign."
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingMembers}
+            options={[
+              { value: '', label: '-- Select a campus member --' },
+              ...memberOptionsList.map((m) => ({
+                value: m.id,
+                label: `${m.name} (${m.email})${m.clubName ? ` — [${m.clubName}]` : ' — [Unassigned]'}`
+              }))
+            ]}
           />
         )}
 
@@ -139,7 +160,7 @@ export const AssignClubVolunteerModal = ({
           }}
           required
           options={[
-            { value: '', label: '-- Select a club --' },
+            { value: '', label: '-- Select a target club --' },
             ...clubs.map((c) => ({
               value: c.id,
               label: `${c.name} (${c.isActive ? 'Active' : 'Inactive'})`

@@ -2,7 +2,9 @@ const express = require('express');
 const {
   createUser,
   listUsers,
-  getUserProfileHistory
+  getUserProfileHistory,
+  updateUser,
+  deleteUser
 } = require('../controllers/user.controller');
 const { authenticateToken } = require('../middleware/auth.middleware');
 const { authorizeRoles } = require('../middleware/role.middleware');
@@ -20,5 +22,11 @@ router.get('/', authorizeRoles('SUPER_ADMIN', 'CLUB_ADMIN'), listUsers);
 
 // 3. Get 360-degree user profile history (SUPER_ADMIN, CLUB_ADMIN)
 router.get('/:userId/profile', authorizeRoles('SUPER_ADMIN', 'CLUB_ADMIN'), getUserProfileHistory);
+
+// 4. Update user details (SUPER_ADMIN, CLUB_ADMIN)
+router.put('/:userId', authorizeRoles('SUPER_ADMIN', 'CLUB_ADMIN'), updateUser);
+
+// 5. Delete user (SUPER_ADMIN, CLUB_ADMIN)
+router.delete('/:userId', authorizeRoles('SUPER_ADMIN', 'CLUB_ADMIN'), deleteUser);
 
 module.exports = router;
