@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { pool } = require('./config/database');
@@ -69,9 +70,10 @@ app.use((req, res) => {
 // Minimal global error handler
 app.use((err, req, res, next) => {
   console.error('[Global Error]', err.message || err);
-  res.status(500).json({
+  const statusCode = typeof err.status === 'number' && err.status >= 400 && err.status < 600 ? err.status : 500;
+  res.status(statusCode).json({
     success: false,
-    message: 'Internal Server Error'
+    message: err.message || 'Internal Server Error'
   });
 });
 
