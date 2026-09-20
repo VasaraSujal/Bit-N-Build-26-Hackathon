@@ -1,6 +1,6 @@
 const { pool } = require('../config/database');
 const geminiService = require('../services/gemini.service');
-const { validateTaskAssignee } = require('../services/task.service');
+const { validateTaskAssignee, checkSameDayTaskConflict } = require('../services/task.service');
 
 const MAX_MEETING_NOTES_LENGTH = 10000;
 
@@ -220,8 +220,51 @@ const acceptMeetingTasks = async (req, res, next) => {
     });
   }
 
+  // Workload-awareness check: multiple tasks on same calendar day
+  const isConfirmed = req.body.confirmSameDayAssignment === true ||
+    req.body.confirm_same_day_assignment === true ||
+    req.body.confirmSameDayAssignment === 'true' ||
+    req.body.confirm_same_day_assignment === 'true';
+
+  if (!isConfirmed) {
+    const allConflicting = [];
+    const seenAssignments = new Map();
+
+    for (const task of validatedTasks) {
+      if (task.assignedTo && task.deadline) {
+        const dateKey = `${task.assignedTo}_${new Date(task.deadline).toISOString().slice(0, 10)}`;
+        const conflictCheck = await checkSameDayTaskConflict(eventId, task.assignedTo, task.deadline);
+        if (conflictCheck.hasConflict) {
+          allConflicting.push(...conflictCheck.conflictingTasks);
+        } else if (seenAssignments.has(dateKey)) {
+          allConflicting.push(seenAssignments.get(dateKey));
+        }
+        seenAssignments.set(dateKey, {
+          description: task.description,
+          deadline: task.deadline,
+          status: 'todo'
+        });
+      }
+    }
+
+    if (allConflicting.length > 0) {
+      return res.status(409).json({
+        success: false,
+        requiresConfirmation: true,
+        requires_confirmation: true,
+        conflictType: 'SAME_DAY_TASK_ASSIGNMENT',
+        message: 'This volunteer already has a task assigned on this date. Are you sure you want to assign another task to this volunteer?',
+        data: {
+          conflictingTasks: allConflicting,
+          existing_tasks: allConflicting
+        }
+      });
+    }
+  }
+
   // Execute atomic task insertion
   const client = await pool.connect();
+
   try {
     await client.query('BEGIN');
 
