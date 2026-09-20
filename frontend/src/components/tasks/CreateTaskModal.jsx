@@ -4,6 +4,7 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
+import { SameDayTaskConfirmationModal } from './SameDayTaskConfirmationModal';
 import { api } from '../../lib/api';
 import { useToast } from '../../context/useToast';
 
@@ -26,10 +27,16 @@ export const CreateTaskModal = ({
   const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Same-day assignment confirmation state
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictTasks, setConflictTasks] = useState([]);
+
   useEffect(() => {
     if (isOpen) {
       setFormData({ description: '', assignedTo: '', deadline: '' });
       setErrors({});
+      setShowConflictModal(false);
+      setConflictTasks([]);
 
       if (eventId) {
         setIsLoadingAssignees(true);
@@ -94,8 +101,7 @@ export const CreateTaskModal = ({
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submitTask = async (confirmed = false) => {
     if (!validate()) return;
 
     setIsSubmitting(true);
@@ -103,19 +109,34 @@ export const CreateTaskModal = ({
       const payload = {
         description: formData.description.trim(),
         assignedTo: formData.assignedTo || undefined,
-        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined
+        deadline: formData.deadline ? new Date(formData.deadline).toISOString() : undefined,
+        confirmSameDayAssignment: confirmed ? true : undefined
       };
 
       const res = await api.post(`events/${eventId}/tasks`, payload);
       success(res.message || 'Task created successfully.');
+      setShowConflictModal(false);
       onSuccess?.(res.data?.task);
       onClose();
     } catch (err) {
-      toastError(err.message || 'Failed to create task.');
+      const data = err.data;
+      if (err.status === 409 && (data?.requiresConfirmation || data?.requires_confirmation)) {
+        const tasks = data?.data?.conflictingTasks || data?.conflictingTasks || data?.existing_tasks || [];
+        setConflictTasks(tasks);
+        setShowConflictModal(true);
+      } else {
+        toastError(err.message || 'Failed to create task.');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitTask(false);
+  };
+
 
   return (
     <Modal
@@ -177,8 +198,18 @@ export const CreateTaskModal = ({
           helperText="Optional target date & time for completion."
         />
       </form>
+
+      {/* Same-Day Task Assignment Confirmation Modal */}
+      <SameDayTaskConfirmationModal
+        isOpen={showConflictModal}
+        onClose={() => setShowConflictModal(false)}
+        onConfirm={() => submitTask(true)}
+        conflictingTasks={conflictTasks}
+        isSubmitting={isSubmitting}
+      />
     </Modal>
   );
 };
+
 
 export default CreateTaskModal;
